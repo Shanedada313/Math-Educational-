@@ -1,0 +1,2761 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Math.educaton — E2EE Student & Study Messaging</title>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+          },
+          colors: {
+            vercel: {
+              bg: 'var(--bg-primary)',
+              surface: 'var(--bg-surface)',
+              elevated: 'var(--bg-elevated)',
+              hover: 'var(--bg-hover)',
+              border: 'var(--border-hairline)',
+              borderStrong: 'var(--border-strong)',
+              text: 'var(--text-primary)',
+              muted: 'var(--text-secondary)',
+              subtle: 'var(--text-subtle)',
+              blue: '#0070F3',
+              blueHover: '#0061D5',
+              green: '#10B981',
+              amber: '#F5A623',
+              red: '#EE0000',
+              purple: '#7928CA',
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    :root {
+      --bg-primary: #000000;
+      --bg-surface: #0A0A0A;
+      --bg-elevated: #111111;
+      --bg-hover: #171717;
+      --border-hairline: #222222;
+      --border-strong: #333333;
+      --text-primary: #EDEDED;
+      --text-secondary: #888888;
+      --text-subtle: #555555;
+      --code-bg: #0D0D0D;
+      --selection-bg: rgba(0, 112, 243, 0.28);
+    }
+
+    html.light {
+      --bg-primary: #FFFFFF;
+      --bg-surface: #FAFAFA;
+      --bg-elevated: #F4F4F5;
+      --bg-hover: #EAEAEA;
+      --border-hairline: #E4E4E7;
+      --border-strong: #D4D4D8;
+      --text-primary: #111111;
+      --text-secondary: #666666;
+      --text-subtle: #999999;
+      --code-bg: #F3F4F6;
+      --selection-bg: rgba(0, 112, 243, 0.16);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    ::selection {
+      background: var(--selection-bg);
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: 'Inter', sans-serif;
+      overflow: hidden;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-strong);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--text-secondary);
+    }
+
+    @keyframes pulseDot {
+      0%, 80%, 100% { transform: scale(0.65); opacity: 0.35; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+    .typing-dot {
+      animation: pulseDot 1.3s infinite ease-in-out both;
+    }
+    .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+    .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .msg-animate {
+      animation: fadeSlideUp 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .geist-grid-bg {
+      background-image: radial-gradient(var(--border-strong) 1px, transparent 1px);
+      background-size: 16px 16px;
+    }
+  </style>
+</head>
+<body class="h-screen w-screen flex flex-col select-none sm:select-auto">
+
+  <!-- Toast Notification Container (Replaces alert()) -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-[70] flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- =========================================================
+       AUTHENTICATION VIEW (Sign In / Create Account + ECDH Keygen)
+  ========================================================== -->
+  <div id="auth-screen" class="fixed inset-0 z-50 bg-vercel-bg geist-grid-bg overflow-y-auto flex flex-col items-center justify-center p-4">
+    <div class="w-full max-w-md rounded-2xl bg-vercel-surface border border-vercel-borderStrong shadow-2xl overflow-hidden msg-animate">
+      
+      <!-- Brand Header -->
+      <div class="px-6 pt-6 pb-4 border-b border-vercel-border flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 via-indigo-500 to-emerald-400 text-white flex items-center justify-center shrink-0 shadow-sm">
+            <!-- Kid-Friendly Math Smiley Emblem -->
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 8h4M7 6v4" />
+              <path d="M15 6l4 4M19 6l-4 4" />
+              <path d="M6.5 14.5c1.5 2.5 4.2 3.5 5.5 3.5s4-1 5.5-3.5" />
+            </svg>
+          </div>
+          <div>
+            <div class="flex items-center gap-1.5">
+              <span class="text-sm font-semibold tracking-tight">Math.educaton</span>
+            </div>
+            <p class="text-[11px] font-mono text-vercel-muted">Private Study Messaging</p>
+          </div>
+        </div>
+
+        <button onclick="toggleTheme()" class="p-1.5 rounded-lg border border-vercel-border bg-vercel-bg hover:border-vercel-borderStrong text-vercel-muted hover:text-vercel-text transition-colors" title="Toggle Theme">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Auth Mode Switcher -->
+      <div class="px-6 pt-4">
+        <div class="grid grid-cols-2 p-1 rounded-lg bg-vercel-bg border border-vercel-border">
+          <button onclick="switchAuthTab('login')" id="auth-tab-login" class="py-1.5 rounded-md text-xs font-medium bg-vercel-elevated text-vercel-text transition-colors">
+            Sign In
+          </button>
+          <button onclick="switchAuthTab('register')" id="auth-tab-register" class="py-1.5 rounded-md text-xs font-medium text-vercel-muted hover:text-vercel-text transition-colors">
+            Create Account
+          </button>
+        </div>
+      </div>
+
+      <!-- LOGIN FORM -->
+      <form id="login-form" onsubmit="handleLoginSubmit(event)" class="p-6 space-y-4">
+        <div>
+          <label class="block text-[11px] font-mono uppercase tracking-wider text-vercel-muted mb-1.5">Username</label>
+          <div class="relative flex items-center">
+            <span class="absolute left-3 font-mono text-xs text-vercel-muted">@</span>
+            <input id="login-username" type="text" required placeholder="alex_v" class="w-full pl-7 pr-3 py-2 rounded-lg bg-vercel-bg border border-vercel-border focus:border-vercel-borderStrong text-sm text-vercel-text placeholder-vercel-subtle focus:outline-none font-mono" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-mono uppercase tracking-wider text-vercel-muted mb-1.5">Password</label>
+          <input id="login-password" type="password" required placeholder="••••••••" class="w-full px-3 py-2 rounded-lg bg-vercel-bg border border-vercel-border focus:border-vercel-borderStrong text-sm text-vercel-text placeholder-vercel-subtle focus:outline-none" />
+        </div>
+
+        <button type="submit" class="w-full py-2.5 rounded-lg bg-vercel-text text-vercel-bg hover:opacity-90 font-medium text-xs transition-opacity flex items-center justify-center gap-2">
+          <span>Unlock Local Vault & Sign In</span>
+          <span>→</span>
+        </button>
+
+        <!-- Registered Local Accounts Quick Switcher (Populated only from user-created accounts) -->
+        <div id="saved-accounts-section" class="hidden pt-3 border-t border-vercel-border">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[10px] font-mono uppercase tracking-wider text-vercel-muted">Registered Accounts</span>
+            <span class="text-[10px] font-mono text-vercel-subtle">Click to sign in</span>
+          </div>
+          <div id="demo-account-pills" class="grid grid-cols-3 gap-2">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </form>
+
+      <!-- REGISTER FORM -->
+      <form id="register-form" onsubmit="handleRegisterSubmit(event)" class="hidden p-6 space-y-4">
+        <!-- Profile Picture Upload / Preset Picker -->
+        <div>
+          <label class="block text-[11px] font-mono uppercase tracking-wider text-vercel-muted mb-2">Profile Picture</label>
+          <div class="flex items-center gap-3.5">
+            <div id="reg-avatar-preview" class="w-14 h-14 rounded-full bg-vercel-elevated border border-vercel-borderStrong flex items-center justify-center overflow-hidden shrink-0 text-sm font-semibold">
+              ▲
+            </div>
+            <div class="flex-1 space-y-2">
+              <div class="flex items-center gap-2">
+                <label class="px-2.5 py-1.5 rounded-lg bg-vercel-elevated hover:bg-vercel-hover border border-vercel-border text-xs font-medium cursor-pointer transition-colors">
+                  <span>Upload Image</span>
+                  <input type="file" accept="image/*" class="hidden" onchange="handleAvatarFileUpload(event)" />
+                </label>
+                <span class="text-[11px] text-vercel-muted">or preset:</span>
+              </div>
+              <div class="flex items-center gap-1.5" id="preset-avatar-list">
+                <!-- Preset geometric avatars populated by JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] font-mono uppercase tracking-wider text-vercel-muted mb-1.5">Username</label>
+            <div class="relative flex items-center">
+              <span class="absolute left-2.5 font-mono text-xs text-vercel-muted">@</span>
+              <input id="reg-username" type="text" required pattern="[a-zA-Z0-9_]{3,20}" placeholder="dev_jane" class="w-full pl-6 pr-2.5 py-2 rounded-lg bg-vercel-bg border border-vercel-border focus:border-vercel-borderStrong text-xs text-vercel-text placeholder-vercel-subtle focus:outline-none font-mono" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-[11px] font-mono uppercase tracking-wider text-vercel-muted mb-1.5">Display Name</label>
+            <input id="reg-displayname" type="text" required placeholder="Jane Doe" class="w-full px-2.5 py-2 rounded-lg bg-vercel-bg border border-vercel-border focus:border-vercel-borderStrong text-xs text-vercel-text placeholder-vercel-subtle focus:outline-none" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-mono uppercase tracking-wider text-vercel-muted mb-1.5">Password</label>
+          <input id="reg-password" type="password" required minlength="4" placeholder="Create vault passphrase" class="w-full px-3 py-2 rounded-lg bg-vercel-bg border border-vercel-border focus:border-vercel-borderStrong text-xs text-vercel-text placeholder-vercel-subtle focus:outline-none" />
+        </div>
+
+        <div class="p-2.5 rounded-lg bg-vercel-bg border border-vercel-border text-[11px] text-vercel-muted flex items-start gap-2">
+          <svg class="w-4 h-4 text-vercel-green shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          <span>Generates a hardware-backed <strong class="text-vercel-text">ECDH P-256</strong> identity keypair locally via Web Crypto API. Private key never leaves this device.</span>
+        </div>
+
+        <button type="submit" id="reg-submit-btn" class="w-full py-2.5 rounded-lg bg-vercel-text text-vercel-bg hover:opacity-90 font-medium text-xs transition-opacity">
+          Generate Keys & Create Account
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       MAIN 3-COLUMN DESKSPACE SHELL (Hidden until authenticated)
+  ========================================================== -->
+  <div id="app-shell" class="hidden flex-1 flex h-full w-full overflow-hidden bg-vercel-bg">
+
+    <!-- =========================================================
+         0. FAR-LEFT SLIM NAVIGATION RAIL (Always Visible)
+    ========================================================== -->
+    <nav id="nav-rail" aria-label="Primary Workspace Rail" class="static z-30 w-[52px] sm:w-[56px] shrink-0 bg-vercel-surface border-r border-vercel-border flex flex-col items-center justify-between py-3 select-none">
+      
+      <!-- Top Brand Mark + Primary Rail Destinations -->
+      <div class="flex flex-col items-center gap-2.5 w-full">
+        <!-- Kid-Friendly Math Smiley Brand Mark -->
+        <button onclick="setRailActive('chats')" class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 via-indigo-500 to-emerald-400 text-white flex items-center justify-center mb-1 hover:opacity-90 transition-opacity shadow-xs" title="Math.educaton">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 8h4M7 6v4" />
+            <path d="M15 6l4 4M19 6l-4 4" />
+            <path d="M6.5 14.5c1.5 2.5 4.2 3.5 5.5 3.5s4-1 5.5-3.5" />
+          </svg>
+        </button>
+
+        <div class="w-6 h-[1px] bg-vercel-border my-0.5"></div>
+
+        <!-- 1. Messages / Chats (Active by default) -->
+        <div class="relative w-full flex items-center justify-center group">
+          <span id="rail-pill-chats" class="absolute left-0 w-[3px] h-5 rounded-r-full bg-vercel-text transition-all"></span>
+          <button onclick="setRailActive('chats')" id="rail-btn-chats" class="w-9 h-9 rounded-xl flex items-center justify-center bg-vercel-elevated text-vercel-text border border-vercel-borderStrong transition-all">
+            <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity fixed left-[64px] px-2.5 py-1 rounded-md bg-vercel-elevated border border-vercel-borderStrong text-[11px] font-medium text-vercel-text whitespace-nowrap shadow-xl z-50">
+            Messages & Groups
+          </div>
+        </div>
+
+        <!-- 2. Add Friends & Requests (with live notification badge) -->
+        <div class="relative w-full flex items-center justify-center group">
+          <span id="rail-pill-friends" class="hidden absolute left-0 w-[3px] h-5 rounded-r-full bg-vercel-text transition-all"></span>
+          <button onclick="setRailActive('friends'); openDirectoryModal('directory')" id="rail-btn-friends" class="relative w-9 h-9 rounded-xl flex items-center justify-center text-vercel-muted hover:text-vercel-text hover:bg-vercel-hover border border-transparent transition-all">
+            <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="8.5" cy="7" r="4"/>
+              <line x1="20" y1="8" x2="20" y2="14" stroke-linecap="round"/>
+              <line x1="23" y1="11" x2="17" y2="11" stroke-linecap="round"/>
+            </svg>
+            <span id="rail-friend-badge" class="hidden absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-vercel-red text-white font-mono text-[9px] font-bold flex items-center justify-center ring-2 ring-vercel-surface">0</span>
+          </button>
+          <div class="pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity fixed left-[64px] px-2.5 py-1 rounded-md bg-vercel-elevated border border-vercel-borderStrong text-[11px] font-medium text-vercel-text whitespace-nowrap shadow-xl z-50">
+            Add Friends & Requests
+          </div>
+        </div>
+
+        <!-- 2b. Share Invite by Email -->
+        <div class="relative w-full flex items-center justify-center group">
+          <span id="rail-pill-email" class="hidden absolute left-0 w-[3px] h-5 rounded-r-full bg-vercel-text transition-all"></span>
+          <button onclick="setRailActive('email'); openDirectoryModal('email')" id="rail-btn-email" class="w-9 h-9 rounded-xl flex items-center justify-center text-vercel-muted hover:text-vercel-text hover:bg-vercel-hover border border-transparent transition-all">
+            <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+              <rect x="2" y="4" width="20" height="16" rx="3" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+          <div class="pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity fixed left-[64px] px-2.5 py-1 rounded-md bg-vercel-elevated border border-vercel-borderStrong text-[11px] font-medium text-vercel-text whitespace-nowrap shadow-xl z-50">
+            Share by Email
+          </div>
+        </div>
+
+        <!-- 3. New Encrypted Group -->
+        <div class="relative w-full flex items-center justify-center group">
+          <span id="rail-pill-group" class="hidden absolute left-0 w-[3px] h-5 rounded-r-full bg-vercel-text transition-all"></span>
+          <button onclick="setRailActive('group'); openCreateGroupModal()" id="rail-btn-group" class="w-9 h-9 rounded-xl flex items-center justify-center text-vercel-muted hover:text-vercel-text hover:bg-vercel-hover border border-transparent transition-all">
+            <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" stroke-linecap="round"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <div class="pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity fixed left-[64px] px-2.5 py-1 rounded-md bg-vercel-elevated border border-vercel-borderStrong text-[11px] font-medium text-vercel-text whitespace-nowrap shadow-xl z-50">
+            New Study Group
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Rail Destinations: Account & Security + Profile -->
+      <div class="flex flex-col items-center gap-2.5 w-full">
+        <!-- 4. Account & Security -->
+        <div class="relative w-full flex items-center justify-center group">
+          <span id="rail-pill-security" class="hidden absolute left-0 w-[3px] h-5 rounded-r-full bg-vercel-text transition-all"></span>
+          <button onclick="setRailActive('security'); openAccountSecurityModal()" id="rail-btn-security" class="w-9 h-9 rounded-xl flex items-center justify-center text-vercel-muted hover:text-vercel-text hover:bg-vercel-hover border border-transparent transition-all">
+            <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="12" cy="11" r="2"/>
+              <path d="M12 13v2" stroke-linecap="round"/>
+            </svg>
+          </button>
+          <div class="pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity fixed left-[64px] px-2.5 py-1 rounded-md bg-vercel-elevated border border-vercel-borderStrong text-[11px] font-medium text-vercel-text whitespace-nowrap shadow-xl z-50">
+            Account & Security
+          </div>
+        </div>
+
+        <div class="w-6 h-[1px] bg-vercel-border my-0.5"></div>
+
+        <!-- 5. Profile (User Avatar Button with Live Green Dot) -->
+        <div class="relative w-full flex items-center justify-center group">
+          <span id="rail-pill-profile" class="hidden absolute left-0 w-[3px] h-5 rounded-r-full bg-vercel-text transition-all"></span>
+          <button onclick="setRailActive('profile'); openProfileModal()" id="rail-btn-profile" class="relative w-9 h-9 rounded-full flex items-center justify-center ring-1 ring-vercel-borderStrong hover:ring-vercel-text transition-all">
+            <div id="rail-user-avatar" class="w-8 h-8 rounded-full bg-zinc-700 flex items-center justify-center text-xs font-semibold text-white overflow-hidden">
+              AR
+            </div>
+            <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-vercel-green ring-2 ring-vercel-surface"></span>
+          </button>
+          <div class="pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity fixed left-[64px] px-2.5 py-1 rounded-md bg-vercel-elevated border border-vercel-borderStrong text-[11px] font-medium text-vercel-text whitespace-nowrap shadow-xl z-50">
+            Profile & Identity
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- =========================================================
+         1. CONTACTS & CHATS SIDEBAR (Always Visible on the Side)
+    ========================================================== -->
+    <aside id="left-sidebar" class="static z-20 w-[210px] sm:w-[248px] md:w-[268px] shrink-0 bg-vercel-surface border-r border-vercel-border flex flex-col justify-between">
+      
+      <!-- Top Header + Quick Action Buttons -->
+      <div class="flex flex-col">
+        <!-- Workspace Header -->
+        <div class="h-13 px-3.5 py-2.5 border-b border-vercel-border flex items-center justify-between">
+          <div class="min-w-0">
+            <div class="flex items-center gap-1.5">
+              <span class="text-[13px] font-semibold tracking-tight truncate">Math.educaton</span>
+            </div>
+            <p class="text-[10px] font-mono text-vercel-muted truncate">Contacts & Study Rooms</p>
+          </div>
+
+          <!-- Simulate Peer Activity Button (Helpful for single-tab testing) -->
+          <button onclick="simulateIncomingPeerEvent()" title="Simulate incoming peer message" class="px-2 py-1 rounded-md border border-vercel-border bg-vercel-bg hover:border-vercel-borderStrong text-[10px] font-mono text-vercel-muted hover:text-vercel-text transition-colors">
+            ⚡ Ping
+          </button>
+        </div>
+
+        <!-- Command Palette & Directory Quick Actions -->
+        <div class="px-3 pt-3 pb-2 space-y-2">
+          <button onclick="openCommandPalette()" class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-vercel-bg border border-vercel-border hover:border-vercel-borderStrong text-vercel-muted hover:text-vercel-text transition-all text-xs">
+            <span class="flex items-center gap-2">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+              </svg>
+              <span>Search users & chats...</span>
+            </span>
+            <kbd class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-vercel-elevated border border-vercel-border text-vercel-muted">⌘K</kbd>
+          </button>
+
+          <!-- Navigation Pills: Friends & Directory | New Group -->
+          <div class="grid grid-cols-3 gap-1.5">
+            <button onclick="setRailActive('friends'); openDirectoryModal('directory')" class="flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg bg-vercel-bg hover:bg-vercel-hover border border-vercel-border text-[11px] font-medium text-vercel-text transition-colors relative" title="Add Friends">
+              <svg class="w-3.5 h-3.5 text-vercel-muted shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/>
+              </svg>
+              <span class="truncate">Friends</span>
+              <span id="friend-req-badge" class="hidden font-mono text-[10px] px-1 rounded-full bg-vercel-blue text-white font-semibold">0</span>
+            </button>
+
+            <button onclick="setRailActive('email'); openDirectoryModal('email')" class="flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg bg-vercel-bg hover:bg-vercel-hover border border-vercel-border text-[11px] font-medium text-vercel-text transition-colors" title="Share by Email">
+              <svg class="w-3.5 h-3.5 text-vercel-muted shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+              </svg>
+              <span class="truncate">Email</span>
+            </button>
+
+            <button onclick="setRailActive('group'); openCreateGroupModal()" class="flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg bg-vercel-bg hover:bg-vercel-hover border border-vercel-border text-[11px] font-medium text-vercel-text transition-colors" title="New Group">
+              <svg class="w-3.5 h-3.5 text-vercel-muted shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+              <span class="truncate">Group</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scrollable Groups & Direct Messages List -->
+      <div class="flex-1 overflow-y-auto px-2.5 py-2 space-y-5">
+        
+        <!-- Study Groups Section -->
+        <div>
+          <div class="px-2 mb-1.5 flex items-center justify-between">
+            <span class="text-[11px] font-mono uppercase tracking-wider text-vercel-muted font-medium">Study Groups</span>
+            <button onclick="openCreateGroupModal()" title="Create study group" class="text-vercel-muted hover:text-vercel-text p-0.5 rounded transition-colors">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M5 12h14" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+          <nav id="group-list" class="space-y-0.5">
+            <!-- Populated via JS -->
+          </nav>
+        </div>
+
+        <!-- Direct Messages (1:1 Friends) Section -->
+        <div>
+          <div class="px-2 mb-1.5 flex items-center justify-between">
+            <span class="text-[11px] font-mono uppercase tracking-wider text-vercel-muted font-medium">Direct Messages</span>
+            <button onclick="openDirectoryModal('directory')" title="Find friends by username" class="text-[10px] font-mono text-vercel-blue hover:underline">
+              + Add
+            </button>
+          </div>
+          <nav id="dm-list" class="space-y-0.5">
+            <!-- Populated via JS -->
+          </nav>
+        </div>
+      </div>
+
+      <!-- Bottom Current User Profile & Controls -->
+      <div class="p-2.5 border-t border-vercel-border bg-vercel-surface">
+        <div class="flex items-center justify-between gap-1.5 p-1.5 rounded-lg hover:bg-vercel-hover transition-colors">
+          <button onclick="setRailActive('profile'); openProfileModal()" class="flex items-center gap-2.5 min-w-0 flex-1 text-left" title="Edit profile & identity">
+            <div class="relative shrink-0">
+              <div id="sidebar-user-avatar" class="w-7 h-7 rounded-full bg-zinc-700 flex items-center justify-center text-xs font-semibold text-white border border-vercel-borderStrong overflow-hidden">
+                AR
+              </div>
+              <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-vercel-green ring-2 ring-vercel-surface"></span>
+            </div>
+            <div class="min-w-0 flex-1">
+              <div id="sidebar-user-name" class="text-xs font-medium truncate">Alex Rivera</div>
+              <div id="sidebar-user-handle" class="text-[10px] font-mono text-vercel-muted truncate">@alex_v</div>
+            </div>
+          </button>
+
+          <!-- Theme Toggle -->
+          <button onclick="toggleTheme()" id="theme-toggle-btn" title="Toggle Geist Light/Dark Theme" class="p-1.5 rounded-md border border-vercel-border bg-vercel-bg hover:border-vercel-borderStrong text-vercel-muted hover:text-vercel-text transition-colors shrink-0">
+          </button>
+
+          <!-- Account & Security -->
+          <button onclick="setRailActive('security'); openAccountSecurityModal()" title="Account & Security" class="p-1.5 rounded-md border border-vercel-border bg-vercel-bg hover:border-vercel-borderStrong text-vercel-muted hover:text-vercel-text transition-colors shrink-0">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- =========================================================
+         2. MAIN CHAT AREA (FLEX-1)
+    ========================================================== -->
+    <main class="flex-1 flex flex-col min-w-0 bg-vercel-bg relative">
+      
+      <!-- Top Conversation Header -->
+      <header class="h-13 px-4 py-2.5 border-b border-vercel-border bg-vercel-bg/85 backdrop-blur-md flex items-center justify-between gap-3 shrink-0 z-10">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <!-- Conversation Avatar / Icon + Name + Live Presence -->
+          <div id="header-avatar-wrap" class="shrink-0"></div>
+          <div class="min-w-0">
+            <div class="flex items-center gap-2">
+              <h1 id="header-title" class="text-sm font-semibold tracking-tight truncate">Select a conversation</h1>
+            </div>
+            <p id="header-subtitle" class="text-[11px] font-mono text-vercel-muted truncate">
+              End-to-end encrypted messaging
+            </p>
+          </div>
+        </div>
+
+        <!-- Right Header Controls -->
+        <div class="flex items-center gap-2 shrink-0">
+          <!-- Share by Email Quick Button -->
+          <button onclick="setRailActive('email'); openDirectoryModal('email')" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-vercel-border bg-vercel-surface hover:border-vercel-borderStrong text-xs text-vercel-text transition-colors" title="Share invite by email">
+            <svg class="w-3.5 h-3.5 text-vercel-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+            </svg>
+            <span class="hidden sm:inline">Share by Email</span>
+          </button>
+
+          <!-- Invite to Group Button (Shown only for group chats) -->
+          <button onclick="openInviteModal()" id="btn-header-invite" class="hidden items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-vercel-border bg-vercel-surface hover:border-vercel-borderStrong text-xs text-vercel-text transition-colors">
+            <svg class="w-3.5 h-3.5 text-vercel-blue" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/>
+            </svg>
+            <span class="hidden sm:inline">Invite</span>
+          </button>
+
+          <!-- Members / Info Drawer Toggle -->
+          <button onclick="toggleRightDrawer('members')" class="p-1.5 rounded-lg border border-vercel-border bg-vercel-surface hover:border-vercel-borderStrong text-vercel-muted hover:text-vercel-text transition-colors" title="Conversation Details">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v18"/>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- Scrollable Message Feed -->
+      <div id="message-feed" class="flex-1 overflow-y-auto px-4 sm:px-6 py-5 space-y-1 scroll-smooth">
+        <!-- Populated dynamically -->
+      </div>
+
+      <!-- Typing Indicator Bar -->
+      <div id="typing-indicator" class="hidden px-6 py-1.5 text-xs text-vercel-muted flex items-center gap-2 bg-vercel-bg">
+        <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-vercel-elevated border border-vercel-border">
+          <span class="w-1.5 h-1.5 rounded-full bg-vercel-text typing-dot"></span>
+          <span class="w-1.5 h-1.5 rounded-full bg-vercel-text typing-dot"></span>
+          <span class="w-1.5 h-1.5 rounded-full bg-vercel-text typing-dot"></span>
+        </span>
+        <span id="typing-user-label" class="font-mono text-[11px]">Typing...</span>
+      </div>
+
+      <!-- Message & File Composer Area -->
+      <div id="composer-container" class="px-4 sm:px-6 pb-4 pt-2 bg-vercel-bg shrink-0">
+        <div class="rounded-xl border border-vercel-border focus-within:border-vercel-borderStrong bg-vercel-surface transition-colors shadow-sm relative">
+          
+          <!-- Attachment Staging Bar -->
+          <div id="composer-attachment-bar" class="hidden px-3.5 py-2 border-b border-vercel-border flex items-center justify-between gap-2 bg-vercel-bg/60 rounded-t-xl">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <div class="w-7 h-7 rounded-lg bg-vercel-elevated border border-vercel-border flex items-center justify-center text-vercel-blue shrink-0">
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                </svg>
+              </div>
+              <div class="min-w-0">
+                <div id="staged-file-name" class="text-xs font-medium truncate">document.pdf</div>
+                <div id="staged-file-meta" class="text-[10px] font-mono text-vercel-muted">Ready to send</div>
+              </div>
+            </div>
+            <button onclick="clearStagedFile()" class="p-1 rounded-md text-vercel-muted hover:text-vercel-text hover:bg-vercel-hover text-xs">✕</button>
+          </div>
+
+          <!-- Textarea -->
+          <textarea
+            id="message-input"
+            rows="1"
+            placeholder="Write a message..."
+            class="w-full bg-transparent px-3.5 pt-3 pb-2 text-sm text-vercel-text placeholder-vercel-muted focus:outline-none resize-none max-h-40 leading-relaxed"
+            oninput="autoResizeTextarea(this); broadcastTyping();"
+            onkeydown="handleComposerKeydown(event)"
+          ></textarea>
+
+          <!-- Composer Bottom Toolbar -->
+          <div class="px-2.5 pb-2 pt-1 flex items-center justify-between gap-2">
+            <div class="flex items-center gap-1">
+              <!-- Real File Upload Input -->
+              <label class="p-1.5 rounded-lg text-vercel-muted hover:text-vercel-text hover:bg-vercel-hover transition-colors flex items-center gap-1.5 text-xs cursor-pointer" title="Attach file">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                </svg>
+                <span class="hidden sm:inline font-mono text-[11px]">Attach File</span>
+                <input id="file-attachment-input" type="file" class="hidden" onchange="handleFileSelect(event)" />
+              </label>
+
+              <!-- Quick Emoji Picker Trigger -->
+              <div class="relative">
+                <button onclick="toggleComposerEmojiPicker()" class="p-1.5 rounded-lg text-vercel-muted hover:text-vercel-text hover:bg-vercel-hover transition-colors" title="Insert emoji">
+                  <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
+                  </svg>
+                </button>
+                <div id="composer-emoji-picker" class="hidden absolute bottom-10 left-0 p-2 rounded-xl bg-vercel-elevated border border-vercel-borderStrong shadow-2xl flex items-center gap-1 z-30">
+                  <button onclick="insertEmojiToComposer('🎉')" class="p-1.5 hover:bg-vercel-hover rounded-lg text-base">🎉</button>
+                  <button onclick="insertEmojiToComposer('➕')" class="p-1.5 hover:bg-vercel-hover rounded-lg text-base">➕</button>
+                  <button onclick="insertEmojiToComposer('🚀')" class="p-1.5 hover:bg-vercel-hover rounded-lg text-base">🚀</button>
+                  <button onclick="insertEmojiToComposer('⚡')" class="p-1.5 hover:bg-vercel-hover rounded-lg text-base">⚡</button>
+                  <button onclick="insertEmojiToComposer('✅')" class="p-1.5 hover:bg-vercel-hover rounded-lg text-base">✅</button>
+                  <button onclick="insertEmojiToComposer('👀')" class="p-1.5 hover:bg-vercel-hover rounded-lg text-base">👀</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2.5">
+              <button onclick="sendEncryptedMessage()" class="px-3 py-1.5 rounded-lg bg-vercel-text text-vercel-bg hover:opacity-90 font-medium text-xs flex items-center gap-1.5 transition-opacity">
+                <span>Send</span>
+                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <path d="M5 12h14M12 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- =========================================================
+         3. RIGHT DETAILS DRAWER (320px)
+    ========================================================== -->
+    <aside id="right-drawer" class="fixed inset-y-0 right-0 z-40 w-[320px] shrink-0 bg-vercel-surface border-l border-vercel-border flex flex-col transform translate-x-full transition-transform duration-200 ease-out shadow-2xl">
+      <div class="h-13 px-4 py-2.5 border-b border-vercel-border flex items-center justify-between">
+        <span class="text-xs font-semibold">Details & Members</span>
+        <button onclick="closeRightDrawer()" class="p-1.5 rounded-lg text-vercel-muted hover:text-vercel-text hover:bg-vercel-hover text-xs">✕</button>
+      </div>
+      <div id="right-drawer-body" class="flex-1 overflow-y-auto p-4 space-y-4">
+        <!-- Populated dynamically -->
+      </div>
+    </aside>
+
+  </div>
+
+  <!-- =========================================================
+       MODAL 1: USER DIRECTORY & FRIEND REQUESTS
+  ========================================================== -->
+  <div id="directory-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/75 backdrop-blur-xs" onclick="if(event.target === this) { closeModal('directory-modal'); setRailActive('chats'); }">
+    <div class="w-full max-w-lg rounded-2xl bg-vercel-surface border border-vercel-borderStrong shadow-2xl overflow-hidden msg-animate">
+      <div class="px-5 py-4 border-b border-vercel-border flex items-center justify-between">
+        <div>
+          <h2 class="text-sm font-semibold">People Directory & Friend Requests</h2>
+          <p class="text-[11px] font-mono text-vercel-muted">Search users by @username & verify ECDH public keys</p>
+        </div>
+        <button onclick="closeModal('directory-modal'); setRailActive('chats');" class="p-1.5 rounded-lg text-vercel-muted hover:text-vercel-text hover:bg-vercel-hover">✕</button>
+      </div>
+
+      <div class="px-5 pt-4">
+        <div class="grid grid-cols-3 p-1 rounded-lg bg-vercel-bg border border-vercel-border">
+          <button onclick="switchDirectoryTab('directory')" id="dir-tab-directory" class="py-1.5 rounded-md text-xs font-medium bg-vercel-elevated text-vercel-text">
+            Search @username
+          </button>
+          <button onclick="switchDirectoryTab('requests')" id="dir-tab-requests" class="py-1.5 rounded-md text-xs font-medium text-vercel-muted hover:text-vercel-text flex items-center justify-center gap-1.5">
+            <span>Requests</span>
+            <span id="dir-req-count" class="font-mono text-[10px] px-1.5 py-0.2 rounded-full bg-vercel-blue text-white">0</span>
+          </button>
+          <button onclick="switchDirectoryTab('email')" id="dir-tab-email" class="py-1.5 rounded-md text-xs font-medium text-vercel-muted hover:text-vercel-text flex items-center justify-center gap-1.5">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+            </svg>
+            <span>Share Email</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="dir-search-wrap" class="px-5 pt-3">
+        <div class="relative flex items-center">
+          <span class="absolute left-3 font-mono text-xs text-vercel-muted">@</span>
+          <input id="dir-search-input" type="text" placeholder="Search by username or display name..." oninput="renderDirectoryContent()" class="w-full pl-7 pr-3 py-2 rounded-lg bg-vercel-bg border border-vercel-border focus:border-vercel-borderStrong text-xs text-vercel-text placeholder-vercel-subtle focus:outline-none font-mono" />
+        </div>
+      </div>
+
+      <div id="directory-body" class="p-5 max-h-80 overflow-y-auto space-y-2">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       MODAL 2: CREATE ENCRYPTED GROUP
+  ========================================================== -->
+  <div id="create-group-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/75 backdrop-blur-xs" onclick="if(event.target === this) { closeModal('create-group-modal'); setRailActive('chats'); }">
+    <div class="w-full max-w-md rounded-2xl bg-vercel-surface border border-vercel-borderStrong shadow-2xl overflow-hidden msg-animate">
+      <div class="px-5 py-4 border-b border-vercel-border flex items-center justify-between">
+        <div>
+          <h2 class="text-sm font-semibold">Create Encrypted Group</h2>
+          <p class="text-[11px] font-mono text-vercel-muted">Generates a 256-bit AES-GCM Group Master Key</p>
+        </div>
+        <button onclick="closeModal('create-group-modal'); setRailActive('chats');" class="p-1.5 rounded-lg text-vercel-muted hover:text-vercel-text hover:bg-vercel-hover">✕</button>
+      </div>
+      <form onsubmit="handleCreateGroupSubmit(event)" class="p-5 space-y-4">
+        <div>
+          <label class="block text-[11px] font-mono uppercase tracking-wider text-vercel-muted mb-1">Group Channel Name</label>
+          <div class="relative flex items-center">
+            <span class="absolute left-3 font-mono text-xs text-vercel-muted">#</span>
+            <input id="new-group-name" type="text" required placeholder="edge-runtime-ops" class="w-full pl-7 pr-3 py-2 rounded-lg bg-vercel-bg border border-vercel-border focus:border-vercel-borderStrong text-xs text-vercel-text placeholder-vercel-subtle focus:outline-none font-mono" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-[11px] font-mono uppercase tracking-wider text-vercel-muted mb-1">Topic</label>
+          <input id="new-group-topic" type="text" placeholder="Zero-knowledge incident response" class="w-full px-3 py-2 rounded-lg bg-vercel-bg border border-vercel-border focus:border-vercel-borderStrong text-xs text-vercel-text placeholder-vercel-subtle focus:outline-none" />
+        </div>
+        <div>
+          <label class="block text-[11px] font-mono uppercase tracking-wider text-vercel-muted mb-1.5">Invite Friends (ECDH Key Wrapping)</label>
+          <div id="create-group-friends-list" class="max-h-40 overflow-y-auto p-1.5 rounded-xl bg-vercel-bg border border-vercel-border space-y-1">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+        <div class="flex items-center justify-end gap-2 pt-1">
+          <button type="button" onclick="closeModal('create-group-modal'); setRailActive('chats');" class="px-3 py-2 rounded-lg border border-vercel-border text-xs text-vercel-muted hover:text-vercel-text">Cancel</button>
+          <button type="submit" class="px-3.5 py-2 rounded-lg bg-vercel-text text-vercel-bg font-medium text-xs hover:opacity-90">Create & Wrap Keys</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       MODAL 3: INVITE MEMBERS TO EXISTING GROUP
+  ========================================================== -->
+  <div id="invite-group-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/75 backdrop-blur-xs" onclick="if(event.target === this) closeModal('invite-group-modal')">
+    <div class="w-full max-w-md rounded-2xl bg-vercel-surface border border-vercel-borderStrong shadow-2xl overflow-hidden msg-animate">
+      <div class="px-5 py-4 border-b border-vercel-border flex items-center justify-between">
+        <div>
+          <h2 class="text-sm font-semibold">Invite Friends to Group</h2>
+          <p class="text-[11px] font-mono text-vercel-muted">Wraps Group Master Key with invitee ECDH public key</p>
+        </div>
+        <button onclick="closeModal('invite-group-modal')" class="p-1.5 rounded-lg text-vercel-muted hover:text-vercel-text hover:bg-vercel-hover">✕</button>
+      </div>
+      <div id="invite-group-body" class="p-5 max-h-72 overflow-y-auto space-y-2">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       MODAL 4: PROFILE & IDENTITY EDITOR MODAL
+  ========================================================== -->
+  <div id="profile-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/75 backdrop-blur-xs" onclick="if(event.target === this) { closeModal('profile-modal'); setRailActive('chats'); }">
+    <div class="w-full max-w-md rounded-2xl bg-vercel-surface border border-vercel-borderStrong shadow-2xl overflow-hidden msg-animate">
+      <div class="px-5 py-4 border-b border-vercel-border flex items-center justify-between">
+        <div>
+          <h2 class="text-sm font-semibold">Profile & Public Identity</h2>
+          <p class="text-[11px] font-mono text-vercel-muted">Customize your avatar, display name & status bio</p>
+        </div>
+        <button onclick="closeModal('profile-modal'); setRailActive('chats');" class="p-1.5 rounded-lg text-vercel-muted hover:text-vercel-text hover:bg-vercel-hover">✕</button>
+      </div>
+      <div id="profile-modal-body" class="p-5 space-y-4">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       MODAL 4B: ACCOUNT & E2EE SECURITY MODAL
+  ========================================================== -->
+  <div id="security-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/75 backdrop-blur-xs" onclick="if(event.target === this) { closeModal('security-modal'); setRailActive('chats'); }">
+    <div class="w-full max-w-md rounded-2xl bg-vercel-surface border border-vercel-borderStrong shadow-2xl overflow-hidden msg-animate">
+      <div class="px-5 py-4 border-b border-vercel-border flex items-center justify-between">
+        <div>
+          <h2 class="text-sm font-semibold">Account & E2EE Security</h2>
+          <p class="text-[11px] font-mono text-vercel-muted">Device keys, vault session & appearance</p>
+        </div>
+        <button onclick="closeModal('security-modal'); setRailActive('chats');" class="p-1.5 rounded-lg text-vercel-muted hover:text-vercel-text hover:bg-vercel-hover">✕</button>
+      </div>
+      <div id="security-modal-body" class="p-5 space-y-4">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       MODAL 5: COMMAND PALETTE (⌘K)
+  ========================================================== -->
+  <div id="command-palette-modal" class="fixed inset-0 z-50 hidden items-start justify-center pt-[14vh] px-4 bg-black/75 backdrop-blur-xs" onclick="if(event.target === this) closeCommandPalette()">
+    <div class="w-full max-w-lg rounded-xl bg-vercel-surface border border-vercel-borderStrong shadow-2xl overflow-hidden msg-animate">
+      <div class="px-4 py-3 border-b border-vercel-border flex items-center gap-3">
+        <svg class="w-4 h-4 text-vercel-muted shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+        </svg>
+        <input id="command-search-input" type="text" placeholder="Jump to group, friend, or search @username..." class="flex-1 bg-transparent text-sm text-vercel-text placeholder-vercel-muted focus:outline-none" oninput="renderCommandResults(this.value)" onkeydown="handleCommandKeydown(event)" />
+        <kbd class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-vercel-elevated border border-vercel-border text-vercel-muted">ESC</kbd>
+      </div>
+      <div id="command-results-list" class="max-h-80 overflow-y-auto p-2 space-y-1"></div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       JAVASCRIPT: WEB CRYPTO E2EE ENGINE + INDEXEDDB + REAL-TIME SYNC
+  ========================================================== -->
+  <script>
+    // =========================================================================
+    // 1. CRYPTOGRAPHIC ENGINE (REAL WEB CRYPTO API: ECDH P-256 + HKDF + AES-GCM)
+    // =========================================================================
+    const CryptoEngine = {
+      // Base64 helpers for ArrayBuffer <-> String serialization
+      bufToBase64(buffer) {
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.byteLength; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary);
+      },
+
+      base64ToBuf(base64) {
+        const binary = atob(base64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        return bytes.buffer;
+      },
+
+      // Generate a fresh ECDH P-256 Identity Keypair (exported as JWK for persistent storage)
+      async generateIdentityKeypair() {
+        const keyPair = await window.crypto.subtle.generateKey(
+          { name: 'ECDH', namedCurve: 'P-256' },
+          true,
+          ['deriveKey', 'deriveBits']
+        );
+        const publicJwk = await window.crypto.subtle.exportKey('jwk', keyPair.publicKey);
+        const privateJwk = await window.crypto.subtle.exportKey('jwk', keyPair.privateKey);
+        const fingerprint = await this.computePublicKeyFingerprint(publicJwk);
+        return { publicJwk, privateJwk, fingerprint };
+      },
+
+      // Compute human-readable SHA-256 Safety Fingerprint of a JWK Public Key
+      async computePublicKeyFingerprint(publicJwk) {
+        const canonical = JSON.stringify({ crv: publicJwk.crv, kty: publicJwk.kty, x: publicJwk.x, y: publicJwk.y });
+        const hash = await window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(canonical));
+        const hex = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+        return hex.slice(0, 16).match(/.{1,4}/g).join(' ');
+      },
+
+      // Derive a pairwise AES-256-GCM Shared Key using ECDH + HKDF-SHA256
+      async derivePairwiseAESKey(myPrivateJwk, theirPublicJwk, contextLabel = 'deskspace-dm-v1') {
+        const privKey = await window.crypto.subtle.importKey(
+          'jwk', myPrivateJwk, { name: 'ECDH', namedCurve: 'P-256' }, false, ['deriveBits']
+        );
+        const pubKey = await window.crypto.subtle.importKey(
+          'jwk', theirPublicJwk, { name: 'ECDH', namedCurve: 'P-256' }, false, []
+        );
+        const sharedBits = await window.crypto.subtle.deriveBits(
+          { name: 'ECDH', public: pubKey }, privKey, 256
+        );
+        const hkdfKey = await window.crypto.subtle.importKey(
+          'raw', sharedBits, 'HKDF', false, ['deriveKey']
+        );
+        return window.crypto.subtle.deriveKey(
+          {
+            name: 'HKDF',
+            hash: 'SHA-256',
+            salt: new TextEncoder().encode('Deskspace-E2EE-Salt-2026'),
+            info: new TextEncoder().encode(contextLabel)
+          },
+          hkdfKey,
+          { name: 'AES-GCM', length: 256 },
+          true,
+          ['encrypt', 'decrypt']
+        );
+      },
+
+      // Compute Mutual Safety Number for 1:1 conversation verification
+      async computeMutualSafetyNumber(jwkA, jwkB) {
+        const fpA = await this.computePublicKeyFingerprint(jwkA);
+        const fpB = await this.computePublicKeyFingerprint(jwkB);
+        const sorted = [fpA, fpB].sort().join(' :: ');
+        const hash = await window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(sorted));
+        const digits = Array.from(new Uint8Array(hash)).slice(0, 15).map(b => String(b % 100).padStart(2, '0'));
+        return digits.join(' ');
+      },
+
+      // Generate a random 256-bit AES-GCM Group Master Key
+      async generateGroupMasterKey() {
+        const key = await window.crypto.subtle.generateKey(
+          { name: 'AES-GCM', length: 256 },
+          true,
+          ['encrypt', 'decrypt']
+        );
+        return window.crypto.subtle.exportKey('raw', key);
+      },
+
+      // Wrap (encrypt) a Group Master Key for a specific member using pairwise ECDH
+      async wrapGroupKeyForMember(rawGroupKeyBuf, senderPrivateJwk, recipientPublicJwk) {
+        const pairwiseKey = await this.derivePairwiseAESKey(senderPrivateJwk, recipientPublicJwk, 'deskspace-group-wrap');
+        const iv = window.crypto.getRandomValues(new Uint8Array(12));
+        const wrapped = await window.crypto.subtle.encrypt(
+          { name: 'AES-GCM', iv },
+          pairwiseKey,
+          rawGroupKeyBuf
+        );
+        return {
+          iv: this.bufToBase64(iv.buffer),
+          wrappedKey: this.bufToBase64(wrapped)
+        };
+      },
+
+      // Unwrap (decrypt) a Group Master Key using my private ECDH key + inviter's public key
+      async unwrapGroupKey(wrappedObj, myPrivateJwk, inviterPublicJwk) {
+        const pairwiseKey = await this.derivePairwiseAESKey(myPrivateJwk, inviterPublicJwk, 'deskspace-group-wrap');
+        const iv = new Uint8Array(this.base64ToBuf(wrappedObj.iv));
+        const ciphertext = this.base64ToBuf(wrappedObj.wrappedKey);
+        const rawGroupKeyBuf = await window.crypto.subtle.decrypt(
+          { name: 'AES-GCM', iv },
+          pairwiseKey,
+          ciphertext
+        );
+        return window.crypto.subtle.importKey(
+          'raw', rawGroupKeyBuf, { name: 'AES-GCM', length: 256 }, true, ['encrypt', 'decrypt']
+        );
+      },
+
+      // Encrypt UTF-8 Text with AES-256-GCM + random 96-bit IV
+      async encryptText(aesKey, plaintext) {
+        const iv = window.crypto.getRandomValues(new Uint8Array(12));
+        const encoded = new TextEncoder().encode(plaintext);
+        const ciphertextBuf = await window.crypto.subtle.encrypt({ name: 'AES-GCM', iv }, aesKey, encoded);
+        return {
+          iv: this.bufToBase64(iv.buffer),
+          ciphertext: this.bufToBase64(ciphertextBuf)
+        };
+      },
+
+      // Decrypt AES-256-GCM Ciphertext -> UTF-8 Text
+      async decryptText(aesKey, ivBase64, ciphertextBase64) {
+        const iv = new Uint8Array(this.base64ToBuf(ivBase64));
+        const ciphertext = this.base64ToBuf(ciphertextBase64);
+        const plainBuf = await window.crypto.subtle.decrypt({ name: 'AES-GCM', iv }, aesKey, ciphertext);
+        return new TextDecoder().decode(plainBuf);
+      },
+
+      // Encrypt Binary File ArrayBuffer with AES-256-GCM + random 96-bit IV
+      async encryptBinary(aesKey, arrayBuffer) {
+        const iv = window.crypto.getRandomValues(new Uint8Array(12));
+        const encryptedBuf = await window.crypto.subtle.encrypt({ name: 'AES-GCM', iv }, aesKey, arrayBuffer);
+        return {
+          iv: this.bufToBase64(iv.buffer),
+          encryptedBuf
+        };
+      },
+
+      // Decrypt Binary File ArrayBuffer with AES-256-GCM
+      async decryptBinary(aesKey, ivBase64, encryptedBuf) {
+        const iv = new Uint8Array(this.base64ToBuf(ivBase64));
+        return window.crypto.subtle.decrypt({ name: 'AES-GCM', iv }, aesKey, encryptedBuf);
+      }
+    };
+
+    // =========================================================================
+    // 2. INDEXEDDB BLOB VAULT (Stores Encrypted File Payloads Off-Memory)
+    // =========================================================================
+    const EncryptedBlobDB = {
+      dbName: 'Deskspace_E2EE_Blobs_v1',
+      storeName: 'encrypted_attachments',
+
+      open() {
+        return new Promise((resolve, reject) => {
+          const req = indexedDB.open(this.dbName, 1);
+          req.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(this.storeName)) {
+              db.createObjectStore(this.storeName);
+            }
+          };
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      },
+
+      async putBlob(id, arrayBuffer) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(this.storeName, 'readwrite');
+          tx.objectStore(this.storeName).put(arrayBuffer, id);
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
+      },
+
+      async getBlob(id) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(this.storeName, 'readonly');
+          const req = tx.objectStore(this.storeName).get(id);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      }
+    };
+
+    // =========================================================================
+    // 3. SHARED DATABASE & CROSS-TAB REAL-TIME CHANNEL
+    // =========================================================================
+    const STORAGE_KEY = 'matheducaton_e2ee_state_v1';
+    const PRESENCE_KEY = 'matheducaton_e2ee_presence_v1';
+    const broadcastChannel = new BroadcastChannel('matheducaton_realtime_bus');
+
+    const PRESET_AVATARS = [
+      { id: 'tri', label: '▲', bg: 'bg-zinc-800 text-white' },
+      { id: 'blu', label: '◆', bg: 'bg-blue-600 text-white' },
+      { id: 'grn', label: '●', bg: 'bg-emerald-600 text-white' },
+      { id: 'pur', label: '■', bg: 'bg-purple-600 text-white' },
+      { id: 'amb', label: '✦', bg: 'bg-amber-600 text-white' }
+    ];
+
+    let appState = {
+      currentUserId: null, // Per-tab logged-in user ID (kept in sessionStorage so each tab can be a different user!)
+      activeConversationId: null, // 'dm:<userId>' or 'group:<groupId>'
+      activeDrawerTab: 'members', // 'members' | 'crypto'
+      selectedInspectMsgId: null,
+      stagedFile: null, // { name, type, size, arrayBuffer }
+      selectedRegAvatar: { type: 'preset', value: '▲', bg: 'bg-zinc-800 text-white' },
+      theme: 'dark',
+      commandSelectedIndex: 0,
+      decryptedCache: {}, // msgId -> decrypted plaintext
+      decryptedFileUrls: {} // attachmentId -> objectURL
+    };
+
+    function loadDB() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        try {
+          return JSON.parse(raw);
+        } catch (e) {
+          console.error('Corrupted DB, resetting', e);
+        }
+      }
+      return { users: {}, groups: {}, messages: {} };
+    }
+
+    function saveDB(db, eventType = 'sync', payload = {}) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+      broadcastChannel.postMessage({ type: eventType, payload, senderTab: TAB_ID });
+    }
+
+    const TAB_ID = 'tab_' + Math.random().toString(36).slice(2, 9);
+
+    // Initialize clean empty database (no pre-populated random people)
+    async function ensureSeededDatabase() {
+      let db = loadDB();
+      if (!db || !db.users) {
+        db = { users: {}, groups: {}, messages: {} };
+        saveDB(db, 'init');
+      }
+      return db;
+    }
+
+    function getDMConversationId(userA, userB) {
+      return 'dm:' + [userA, userB].sort().join('__');
+    }
+
+    // =========================================================================
+    // 4. REAL-TIME PRESENCE HEARTBEAT ENGINE
+    // =========================================================================
+    function updateMyPresenceHeartbeat() {
+      if (!appState.currentUserId) return;
+      const presence = JSON.parse(localStorage.getItem(PRESENCE_KEY) || '{}');
+      presence[appState.currentUserId] = Date.now();
+      localStorage.setItem(PRESENCE_KEY, JSON.stringify(presence));
+    }
+
+    function getUserPresence(userId) {
+      if (userId === appState.currentUserId) return { status: 'online', label: 'Online (You)' };
+      const presence = JSON.parse(localStorage.getItem(PRESENCE_KEY) || '{}');
+      const lastSeen = presence[userId];
+      const now = Date.now();
+
+      // If another tab is actively logged in as this user within last 12 seconds -> Real-Time Online!
+      if (lastSeen && now - lastSeen < 12000) {
+        return { status: 'online', label: 'Online · Active now' };
+      }
+      if (lastSeen) {
+        const mins = Math.max(1, Math.floor((now - lastSeen) / 60000));
+        return { status: 'offline', label: `Offline · Last seen ${mins}m ago` };
+      }
+      return { status: 'offline', label: 'Offline' };
+    }
+
+    function getPresenceDotClass(status) {
+      if (status === 'online') return 'bg-vercel-green';
+      if (status === 'idle') return 'bg-vercel-amber';
+      return 'bg-zinc-500';
+    }
+
+    setInterval(() => {
+      updateMyPresenceHeartbeat();
+      if (appState.currentUserId) {
+        renderSidebarLists();
+        updateActiveHeaderPresence();
+      }
+    }, 4000);
+
+    // =========================================================================
+    // 5. AUTHENTICATION, REGISTRATION & AVATAR CROPPING/RESIZING
+    // =========================================================================
+    function renderAuthScreen() {
+      const db = loadDB();
+      const pillsEl = document.getElementById('demo-account-pills');
+      const sectionEl = document.getElementById('saved-accounts-section');
+      const registeredUsers = Object.values(db.users || {});
+
+      if (registeredUsers.length === 0) {
+        sectionEl.classList.add('hidden');
+        pillsEl.innerHTML = '';
+        switchAuthTab('register');
+      } else {
+        sectionEl.classList.remove('hidden');
+        pillsEl.innerHTML = registeredUsers.slice(0, 6).map(u => `
+          <button type="button" onclick="quickDemoLogin('${u.id}')" class="flex flex-col items-center gap-1.5 p-2 rounded-xl bg-vercel-bg hover:bg-vercel-hover border border-vercel-border hover:border-vercel-borderStrong transition-colors text-center">
+            ${renderAvatarHTML(u.avatar, 'w-7 h-7 text-[10px]')}
+            <span class="font-mono text-[10px] text-vercel-text truncate w-full">@${u.username}</span>
+          </button>
+        `).join('');
+      }
+
+      // Render preset avatar buttons in register tab
+      const presetList = document.getElementById('preset-avatar-list');
+      presetList.innerHTML = PRESET_AVATARS.map(p => `
+        <button type="button" onclick="selectPresetAvatar('${p.label}', '${p.bg}')" class="w-6 h-6 rounded-full ${p.bg} text-[11px] font-mono flex items-center justify-center border border-vercel-borderStrong hover:scale-105 transition-transform">
+          ${p.label}
+        </button>
+      `).join('');
+    }
+
+    function switchAuthTab(tab) {
+      const loginForm = document.getElementById('login-form');
+      const regForm = document.getElementById('register-form');
+      const tabLogin = document.getElementById('auth-tab-login');
+      const tabReg = document.getElementById('auth-tab-register');
+
+      if (tab === 'login') {
+        loginForm.classList.remove('hidden');
+        regForm.classList.add('hidden');
+        tabLogin.className = 'py-1.5 rounded-md text-xs font-medium bg-vercel-elevated text-vercel-text transition-colors';
+        tabReg.className = 'py-1.5 rounded-md text-xs font-medium text-vercel-muted hover:text-vercel-text transition-colors';
+      } else {
+        loginForm.classList.add('hidden');
+        regForm.classList.remove('hidden');
+        tabReg.className = 'py-1.5 rounded-md text-xs font-medium bg-vercel-elevated text-vercel-text transition-colors';
+        tabLogin.className = 'py-1.5 rounded-md text-xs font-medium text-vercel-muted hover:text-vercel-text transition-colors';
+      }
+    }
+
+    function selectPresetAvatar(label, bg) {
+      appState.selectedRegAvatar = { type: 'preset', value: label, bg };
+      const prev = document.getElementById('reg-avatar-preview');
+      prev.className = `w-14 h-14 rounded-full ${bg} border border-vercel-borderStrong flex items-center justify-center overflow-hidden shrink-0 text-base font-mono font-semibold`;
+      prev.innerHTML = label;
+    }
+
+    // Resize & center-crop uploaded image to a crisp 128x128 DataURL
+    function handleAvatarFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const size = 128;
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext('2d');
+          const minSide = Math.min(img.width, img.height);
+          const sx = (img.width - minSide) / 2;
+          const sy = (img.height - minSide) / 2;
+          ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          appState.selectedRegAvatar = { type: 'image', value: dataUrl, bg: '' };
+          const prev = document.getElementById('reg-avatar-preview');
+          prev.innerHTML = `<img src="${dataUrl}" class="w-full h-full object-cover" alt="Avatar" />`;
+          showToast('Profile picture cropped & encoded');
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function handleRegisterSubmit(e) {
+      e.preventDefault();
+      const username = document.getElementById('reg-username').value.trim().toLowerCase();
+      const displayName = document.getElementById('reg-displayname').value.trim();
+      const password = document.getElementById('reg-password').value;
+
+      const db = loadDB();
+      if (db.users[username]) {
+        showToast(`Username @${username} is already taken`);
+        return;
+      }
+
+      const btn = document.getElementById('reg-submit-btn');
+      btn.textContent = 'Generating ECDH P-256 Keypair...';
+      btn.disabled = true;
+
+      try {
+        const keys = await CryptoEngine.generateIdentityKeypair();
+        db.users[username] = {
+          id: username,
+          username,
+          displayName,
+          role: 'Math.educaton Student',
+          bio: 'End-to-end encrypted on Math.educaton',
+          password,
+          avatar: appState.selectedRegAvatar,
+          publicJwk: keys.publicJwk,
+          privateJwk: keys.privateJwk,
+          fingerprint: keys.fingerprint,
+          friends: [],
+          incomingRequests: [],
+          outgoingRequests: []
+        };
+
+        saveDB(db, 'user_registered', { username });
+        completeLogin(username);
+        showToast(`Identity @${username} created with ECDH P-256 keys`);
+      } finally {
+        btn.textContent = 'Generate Keys & Create Account';
+        btn.disabled = false;
+      }
+    }
+
+    function handleLoginSubmit(e) {
+      e.preventDefault();
+      const username = document.getElementById('login-username').value.trim().toLowerCase().replace(/^@/, '');
+      const password = document.getElementById('login-password').value;
+      const db = loadDB();
+      const user = db.users[username];
+
+      if (!user || user.password !== password) {
+        showToast('Invalid username or vault passphrase');
+        return;
+      }
+      completeLogin(user.id);
+    }
+
+    function quickDemoLogin(userId) {
+      completeLogin(userId);
+    }
+
+    function completeLogin(userId) {
+      appState.currentUserId = userId;
+      sessionStorage.setItem('deskspace_session_user', userId);
+      updateMyPresenceHeartbeat();
+
+      document.getElementById('auth-screen').classList.add('hidden');
+      document.getElementById('app-shell').classList.remove('hidden');
+
+      const db = loadDB();
+      const me = db.users[userId];
+
+      // Update Sidebar & Far-Left Rail User Avatars
+      syncCurrentUserAvatars(me);
+
+      // Pick default active conversation
+      const myGroups = Object.values(db.groups).filter(g => g.members.includes(userId));
+      if (myGroups.length > 0) {
+        selectConversation(`group:${myGroups[0].id}`);
+      } else if (me.friends.length > 0) {
+        selectConversation(getDMConversationId(userId, me.friends[0]));
+      } else {
+        appState.activeConversationId = null;
+        renderEmptyConversationState();
+      }
+
+      renderSidebarLists();
+    }
+
+    function logoutUser() {
+      sessionStorage.removeItem('deskspace_session_user');
+      appState.currentUserId = null;
+      appState.decryptedCache = {};
+      document.getElementById('app-shell').classList.add('hidden');
+      document.getElementById('auth-screen').classList.remove('hidden');
+      renderAuthScreen();
+      showToast('Vault locked & signed out');
+    }
+
+    // =========================================================================
+    // 6. SIDEBAR, FRIENDS, GROUPS & DIRECTORY SEARCH
+    // =========================================================================
+    function renderAvatarHTML(avatarObj, sizeClasses = 'w-7 h-7 text-xs', idAttr = '') {
+      const idStr = idAttr ? `id="${idAttr}"` : '';
+      if (avatarObj && avatarObj.type === 'image') {
+        return `<div ${idStr} class="${sizeClasses} rounded-full border border-vercel-borderStrong overflow-hidden shrink-0"><img src="${avatarObj.value}" class="w-full h-full object-cover" alt="Avatar" /></div>`;
+      }
+      const bg = (avatarObj && avatarObj.bg) || 'bg-zinc-700 text-white';
+      const val = (avatarObj && avatarObj.value) || '▲';
+      return `<div ${idStr} class="${sizeClasses} rounded-full ${bg} border border-vercel-borderStrong flex items-center justify-center font-semibold shrink-0">${escapeHTML(val)}</div>`;
+    }
+
+    function renderSidebarLists() {
+      const db = loadDB();
+      const me = db.users[appState.currentUserId];
+      if (!me) return;
+
+      // Update Friend Request Badge (sidebar + far-left rail)
+      const reqBadge = document.getElementById('friend-req-badge');
+      const railReqBadge = document.getElementById('rail-friend-badge');
+      const reqCount = (me.incomingRequests || []).length;
+      if (reqCount > 0) {
+        reqBadge.textContent = reqCount;
+        reqBadge.classList.remove('hidden');
+        if (railReqBadge) {
+          railReqBadge.textContent = reqCount;
+          railReqBadge.classList.remove('hidden');
+        }
+      } else {
+        reqBadge.classList.add('hidden');
+        if (railReqBadge) railReqBadge.classList.add('hidden');
+      }
+
+      // Render Encrypted Groups
+      const groupListEl = document.getElementById('group-list');
+      const myGroups = Object.values(db.groups).filter(g => g.members.includes(me.id));
+      if (myGroups.length === 0) {
+        groupListEl.innerHTML = `<div class="px-2.5 py-2 text-[11px] text-vercel-subtle font-mono">No groups yet</div>`;
+      } else {
+        groupListEl.innerHTML = myGroups.map(g => {
+          const convId = `group:${g.id}`;
+          const isActive = appState.activeConversationId === convId;
+          return `
+            <button onclick="selectConversation('${convId}')" class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[13px] transition-colors ${
+              isActive
+                ? 'bg-vercel-elevated text-vercel-text font-medium border border-vercel-border'
+                : 'text-vercel-muted hover:text-vercel-text hover:bg-vercel-hover border border-transparent'
+            }">
+              <span class="flex items-center gap-2 truncate">
+                <span class="font-mono text-xs ${isActive ? 'text-vercel-green' : 'text-vercel-subtle'}">#</span>
+                <span class="truncate">${escapeHTML(g.name)}</span>
+              </span>
+              <span class="font-mono text-[10px] text-vercel-subtle">${g.members.length}</span>
+            </button>
+          `;
+        }).join('');
+      }
+
+      // Render Direct Messages (Accepted Friends)
+      const dmListEl = document.getElementById('dm-list');
+      if (me.friends.length === 0) {
+        dmListEl.innerHTML = `
+          <button onclick="openDirectoryModal('directory')" class="w-full text-left px-2.5 py-2 rounded-lg border border-dashed border-vercel-border text-[11px] text-vercel-muted hover:text-vercel-text">
+            + Search @username to add friends
+          </button>
+        `;
+      } else {
+        dmListEl.innerHTML = me.friends.map(friendId => {
+          const friend = db.users[friendId];
+          if (!friend) return '';
+          const convId = getDMConversationId(me.id, friend.id);
+          const isActive = appState.activeConversationId === convId;
+          const presence = getUserPresence(friend.id);
+
+          return `
+            <button onclick="selectConversation('${convId}')" class="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[13px] transition-colors ${
+              isActive
+                ? 'bg-vercel-elevated text-vercel-text font-medium border border-vercel-border'
+                : 'text-vercel-muted hover:text-vercel-text hover:bg-vercel-hover border border-transparent'
+            }">
+              <span class="flex items-center gap-2.5 truncate">
+                <span class="relative shrink-0">
+                  ${renderAvatarHTML(friend.avatar, 'w-5 h-5 text-[9px]')}
+                  <span class="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full ${getPresenceDotClass(presence.status)} ring-2 ring-vercel-surface"></span>
+                </span>
+                <span class="truncate">${escapeHTML(friend.displayName)}</span>
+              </span>
+              <span class="font-mono text-[10px] text-vercel-subtle">@${friend.username}</span>
+            </button>
+          `;
+        }).join('');
+      }
+    }
+
+    // Directory & Friend Requests Modal Logic
+    let currentDirectoryTab = 'directory';
+
+    function openDirectoryModal(tab = 'directory') {
+      document.getElementById('directory-modal').classList.remove('hidden');
+      document.getElementById('directory-modal').classList.add('flex');
+      switchDirectoryTab(tab);
+    }
+
+    function switchDirectoryTab(tab) {
+      currentDirectoryTab = tab;
+      const tabDir = document.getElementById('dir-tab-directory');
+      const tabReq = document.getElementById('dir-tab-requests');
+      const tabEmail = document.getElementById('dir-tab-email');
+      const searchWrap = document.getElementById('dir-search-wrap');
+
+      const activeClass = 'py-1.5 rounded-md text-xs font-medium bg-vercel-elevated text-vercel-text flex items-center justify-center gap-1.5';
+      const inactiveClass = 'py-1.5 rounded-md text-xs font-medium text-vercel-muted hover:text-vercel-text flex items-center justify-center gap-1.5';
+
+      tabDir.className = tab === 'directory' ? 'py-1.5 rounded-md text-xs font-medium bg-vercel-elevated text-vercel-text' : 'py-1.5 rounded-md text-xs font-medium text-vercel-muted hover:text-vercel-text';
+      tabReq.className = tab === 'requests' ? activeClass : inactiveClass;
+      if (tabEmail) tabEmail.className = tab === 'email' ? activeClass : inactiveClass;
+
+      if (tab === 'directory') {
+        searchWrap.classList.remove('hidden');
+      } else {
+        searchWrap.classList.add('hidden');
+      }
+      renderDirectoryContent();
+    }
+
+    function renderDirectoryContent() {
+      const db = loadDB();
+      const me = db.users[appState.currentUserId];
+      if (!me) return;
+
+      document.getElementById('dir-req-count').textContent = (me.incomingRequests || []).length;
+      const bodyEl = document.getElementById('directory-body');
+
+      if (currentDirectoryTab === 'email') {
+        const baseUrl = window.location.href.split('?')[0].split('#')[0];
+        const inviteUrl = `${baseUrl}?invite=${encodeURIComponent(me.username)}`;
+        const sentInvites = JSON.parse(localStorage.getItem('matheducaton_email_invites') || '[]').filter(i => i.from === me.id);
+
+        bodyEl.innerHTML = `
+          <form onsubmit="handleShareByEmailSubmit(event)" class="space-y-3.5">
+            <div class="p-3.5 rounded-xl bg-vercel-bg border border-vercel-border space-y-3">
+              <div>
+                <label class="block text-[11px] font-mono uppercase tracking-wider text-vercel-muted mb-1">Recipient Email Address</label>
+                <input id="share-email-to" type="email" required placeholder="classmate@school.edu" oninput="updateEmailSharePreview()" class="w-full px-3 py-2 rounded-lg bg-vercel-surface border border-vercel-border focus:border-vercel-borderStrong text-xs text-vercel-text placeholder-vercel-subtle focus:outline-none" />
+              </div>
+
+              <div>
+                <label class="block text-[11px] font-mono uppercase tracking-wider text-vercel-muted mb-1">Personal Note (Optional)</label>
+                <textarea id="share-email-note" rows="2" oninput="updateEmailSharePreview()" placeholder="Hey! Join me on Math.educaton (@${escapeHTML(me.username)}) so we can study and share notes." class="w-full px-3 py-2 rounded-lg bg-vercel-surface border border-vercel-border focus:border-vercel-borderStrong text-xs text-vercel-text placeholder-vercel-subtle focus:outline-none resize-none"></textarea>
+              </div>
+
+              <!-- Ready-to-Send Email Preview -->
+              <div class="p-2.5 rounded-lg bg-vercel-surface border border-vercel-border space-y-1">
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] font-mono uppercase tracking-wider text-vercel-muted">Email Draft Preview</span>
+                  <button type="button" onclick="copyFullEmailDraft()" class="text-[10px] font-mono text-vercel-blue hover:underline">Copy Full Email</button>
+                </div>
+                <pre id="email-draft-preview" class="text-[11px] font-mono text-vercel-text whitespace-pre-wrap leading-relaxed"></pre>
+              </div>
+
+              <!-- Standard Mail App Launcher -->
+              <div class="pt-0.5">
+                <button type="submit" class="w-full py-2 px-3 rounded-lg bg-vercel-text text-vercel-bg font-medium text-xs hover:opacity-90 flex items-center justify-center gap-1.5">
+                  <span>Open Mail App & Copy Invite Link</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="p-3 rounded-xl bg-vercel-bg border border-vercel-border flex items-center justify-between gap-2">
+              <div class="min-w-0">
+                <div class="text-[10px] font-mono uppercase tracking-wider text-vercel-muted">Direct App & Invite Link</div>
+                <div class="text-[11px] font-mono text-vercel-text truncate mt-0.5">${escapeHTML(inviteUrl)}</div>
+              </div>
+              <button type="button" onclick="copyTextFallback('${escapeHTML(inviteUrl)}', 'Invite link copied to clipboard')" class="py-1.5 px-2.5 rounded-lg bg-vercel-elevated hover:bg-vercel-hover border border-vercel-border text-[11px] font-mono text-vercel-text shrink-0">
+                Copy Link
+              </button>
+            </div>
+
+            ${sentInvites.length > 0 ? `
+              <div>
+                <div class="text-[10px] font-mono uppercase tracking-wider text-vercel-muted mb-1.5">Recent Email Invites</div>
+                <div class="space-y-1.5">
+                  ${sentInvites.slice(0, 4).map(inv => `
+                    <div class="flex items-center justify-between px-3 py-2 rounded-lg bg-vercel-bg border border-vercel-border text-xs">
+                      <span class="font-mono text-vercel-text truncate">${escapeHTML(inv.email)}</span>
+                      <span class="font-mono text-[10px] text-vercel-green shrink-0">Prepared • ${new Date(inv.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            ` : ''}
+          </form>
+        `;
+        updateEmailSharePreview();
+        return;
+      }
+
+      if (currentDirectoryTab === 'requests') {
+        const incoming = me.incomingRequests || [];
+        const outgoing = me.outgoingRequests || [];
+
+        let html = `<div class="space-y-4">`;
+        html += `<div>
+          <h3 class="text-[11px] font-mono uppercase tracking-wider text-vercel-muted mb-2">Incoming Requests (${incoming.length})</h3>
+          ${incoming.length === 0 ? `<p class="text-xs text-vercel-subtle p-3 rounded-xl border border-vercel-border bg-vercel-bg">No pending incoming friend requests.</p>` : incoming.map(senderId => {
+            const u = db.users[senderId];
+            if (!u) return '';
+            return `
+              <div class="flex items-center justify-between p-2.5 rounded-xl bg-vercel-bg border border-vercel-border">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  ${renderAvatarHTML(u.avatar, 'w-8 h-8 text-xs')}
+                  <div class="min-w-0">
+                    <div class="text-xs font-semibold truncate">${escapeHTML(u.displayName)}</div>
+                    <div class="text-[10px] font-mono text-vercel-muted truncate">@${u.username} • ${u.fingerprint.slice(0, 9)}</div>
+                  </div>
+                </div>
+                <div class="flex items-center gap-1.5 shrink-0">
+                  <button onclick="acceptFriendRequest('${u.id}')" class="px-2.5 py-1 rounded-lg bg-vercel-text text-vercel-bg text-xs font-medium hover:opacity-90">Accept</button>
+                  <button onclick="declineFriendRequest('${u.id}')" class="px-2 py-1 rounded-lg border border-vercel-border text-xs text-vercel-muted hover:text-vercel-text">Decline</button>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>`;
+
+        html += `<div>
+          <h3 class="text-[11px] font-mono uppercase tracking-wider text-vercel-muted mb-2">Outgoing Pending (${outgoing.length})</h3>
+          ${outgoing.length === 0 ? `<p class="text-xs text-vercel-subtle p-3 rounded-xl border border-vercel-border bg-vercel-bg">No outgoing requests.</p>` : outgoing.map(targetId => {
+            const u = db.users[targetId];
+            if (!u) return '';
+            return `
+              <div class="flex items-center justify-between p-2.5 rounded-xl bg-vercel-bg border border-vercel-border">
+                <div class="flex items-center gap-2.5">
+                  ${renderAvatarHTML(u.avatar, 'w-7 h-7 text-xs')}
+                  <div>
+                    <div class="text-xs font-medium">${escapeHTML(u.displayName)}</div>
+                    <div class="text-[10px] font-mono text-vercel-muted">@${u.username}</div>
+                  </div>
+                </div>
+                <span class="font-mono text-[10px] px-2 py-0.5 rounded bg-vercel-elevated border border-vercel-border text-vercel-muted">Pending</span>
+              </div>
+            `;
+          }).join('')}
+        </div></div>`;
+
+        bodyEl.innerHTML = html;
+        return;
+      }
+
+      // Directory search by @username
+      const query = (document.getElementById('dir-search-input').value || '').trim().toLowerCase().replace(/^@/, '');
+      const candidates = Object.values(db.users).filter(u =>
+        u.id !== me.id &&
+        (u.username.toLowerCase().includes(query) || u.displayName.toLowerCase().includes(query))
+      );
+
+      if (candidates.length === 0) {
+        bodyEl.innerHTML = `<div class="py-8 text-center text-xs text-vercel-muted">No users matching "@${escapeHTML(query)}"</div>`;
+        return;
+      }
+
+      bodyEl.innerHTML = candidates.map(u => {
+        const isFriend = me.friends.includes(u.id);
+        const isOutgoing = (me.outgoingRequests || []).includes(u.id);
+        const isIncoming = (me.incomingRequests || []).includes(u.id);
+        const presence = getUserPresence(u.id);
+
+        let actionBtn = '';
+        if (isFriend) {
+          actionBtn = `<button onclick="closeModal('directory-modal'); selectConversation('${getDMConversationId(me.id, u.id)}')" class="px-2.5 py-1 rounded-lg bg-vercel-elevated hover:bg-vercel-hover border border-vercel-border text-xs font-medium text-vercel-text">Message</button>`;
+        } else if (isIncoming) {
+          actionBtn = `<button onclick="acceptFriendRequest('${u.id}')" class="px-2.5 py-1 rounded-lg bg-vercel-blue text-white text-xs font-medium hover:opacity-90">Accept Request</button>`;
+        } else if (isOutgoing) {
+          actionBtn = `<span class="font-mono text-[10px] px-2 py-1 rounded-lg bg-vercel-elevated border border-vercel-border text-vercel-muted">Request Sent</span>`;
+        } else {
+          actionBtn = `<button onclick="sendFriendRequest('${u.id}')" class="px-2.5 py-1 rounded-lg bg-vercel-text text-vercel-bg text-xs font-medium hover:opacity-90">+ Add Friend</button>`;
+        }
+
+        return `
+          <div class="flex items-center justify-between p-2.5 rounded-xl bg-vercel-bg border border-vercel-border hover:border-vercel-borderStrong transition-colors">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="relative shrink-0">
+                ${renderAvatarHTML(u.avatar, 'w-8 h-8 text-xs')}
+                <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ${getPresenceDotClass(presence.status)} ring-2 ring-vercel-bg"></span>
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-1.5">
+                  <span class="text-xs font-semibold truncate">${escapeHTML(u.displayName)}</span>
+                  <span class="font-mono text-[10px] text-vercel-muted">@${u.username}</span>
+                </div>
+                <div class="text-[10px] font-mono text-vercel-subtle truncate">ECDH: ${u.fingerprint}</div>
+              </div>
+            </div>
+            <div class="shrink-0 ml-2">${actionBtn}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function sendFriendRequest(targetUserId) {
+      const db = loadDB();
+      const me = db.users[appState.currentUserId];
+      const target = db.users[targetUserId];
+      if (!me || !target) return;
+
+      if (!me.outgoingRequests.includes(targetUserId)) {
+        me.outgoingRequests.push(targetUserId);
+      }
+      if (!target.incomingRequests.includes(me.id)) {
+        target.incomingRequests.push(me.id);
+      }
+      saveDB(db, 'friend_request', { from: me.id, to: targetUserId });
+      renderDirectoryContent();
+      showToast(`Friend request sent to @${target.username}`);
+    }
+
+    function acceptFriendRequest(senderId) {
+      const db = loadDB();
+      const me = db.users[appState.currentUserId];
+      const sender = db.users[senderId];
+      if (!me || !sender) return;
+
+      me.incomingRequests = me.incomingRequests.filter(id => id !== senderId);
+      sender.outgoingRequests = sender.outgoingRequests.filter(id => id !== me.id);
+
+      if (!me.friends.includes(senderId)) me.friends.push(senderId);
+      if (!sender.friends.includes(me.id)) sender.friends.push(me.id);
+
+      saveDB(db, 'friend_accepted', { by: me.id, with: senderId });
+      renderSidebarLists();
+      renderDirectoryContent();
+      showToast(`You and @${sender.username} are now connected via E2EE`);
+    }
+
+    function declineFriendRequest(senderId) {
+      const db = loadDB();
+      const me = db.users[appState.currentUserId];
+      const sender = db.users[senderId];
+      if (!me || !sender) return;
+
+      me.incomingRequests = me.incomingRequests.filter(id => id !== senderId);
+      sender.outgoingRequests = sender.outgoingRequests.filter(id => id !== me.id);
+      saveDB(db, 'friend_declined');
+      renderSidebarLists();
+      renderDirectoryContent();
+      showToast(`Declined request from @${sender.username}`);
+    }
+
+    function handleShareByEmailSubmit(e) {
+      e.preventDefault();
+      const db = loadDB();
+      const me = db.users[appState.currentUserId];
+      if (!me) return;
+
+      const email = document.getElementById('share-email-to').value.trim();
+      const customNote = document.getElementById('share-email-note').value.trim();
+      const baseUrl = window.location.href.split('?')[0].split('#')[0];
+      const inviteUrl = `${baseUrl}?invite=${encodeURIComponent(me.username)}`;
+
+      const subject = `${me.displayName} invited you to Math.educaton`;
+      const bodyLines = [
+        customNote || `Hi! Join me on Math.educaton so we can chat and study together.`,
+        ``,
+        `My username: @${me.username}`,
+        `Join link: ${inviteUrl}`
+      ];
+
+      // Log recent invite locally
+      const history = JSON.parse(localStorage.getItem('matheducaton_email_invites') || '[]');
+      history.unshift({ from: me.id, email, sentAt: Date.now() });
+      localStorage.setItem('matheducaton_email_invites', JSON.stringify(history.slice(0, 20)));
+
+      // Launch user's email client with pre-filled recipient, subject & body
+      const mailtoUrl = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyLines.join('\n'))}`;
+      try {
+        const link = document.createElement('a');
+        link.href = mailtoUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (err) {
+        console.warn('Mailto blocked in sandbox', err);
+      }
+      copyTextFallback(inviteUrl, `Invite link copied & email prepared for ${email}`);
+
+      renderDirectoryContent();
+    }
+
+    function buildEmailInvitePayload() {
+      const db = loadDB();
+      const me = db.users[appState.currentUserId];
+      if (!me) return { email: '', subject: '', body: '', inviteUrl: '' };
+
+      const emailEl = document.getElementById('share-email-to');
+      const noteEl = document.getElementById('share-email-note');
+      const email = emailEl ? emailEl.value.trim() : '';
+      const customNote = noteEl ? noteEl.value.trim() : '';
+      const baseUrl = window.location.href.split('?')[0].split('#')[0];
+      const inviteUrl = `${baseUrl}?invite=${encodeURIComponent(me.username)}`;
+      const subject = `${me.displayName} invited you to Math.educaton`;
+      const body = [
+        customNote || `Hi! Join me on Math.educaton so we can chat and study together.`,
+        ``,
+        `My username: @${me.username}`,
+        `Join link: ${inviteUrl}`
+      ].join('\n');
+
+      return { me, email, subject, body, inviteUrl };
+    }
+
+    function updateEmailSharePreview() {
+      const previewEl = document.getElementById('email-draft-preview');
+      if (!previewEl) return;
+      const { email, subject, body } = buildEmailInvitePayload();
+      previewEl.textContent = `To: ${email || '(enter recipient email)'}\nSubject: ${subject}\n\n${body}`;
+    }
+
+    function copyFullEmailDraft() {
+      const { subject, body } = buildEmailInvitePayload();
+      copyTextFallback(`Subject: ${subject}\n\n${body}`, 'Full email draft copied to clipboard');
+    }
+
+    // =========================================================================
+    // 7. GROUP CREATION & INVITING MEMBERS WITH ECDH KEY WRAPPING
+    // =========================================================================
+    function openCreateGroupModal() {
+      const db = loadDB();
+      const me = db.users[appState.currentUserId];
+      if (!me) return;
+
+      const listEl = document.getElementById('create-group-friends-list');
+      if (me.friends.length === 0) {
+        listEl.innerHTML = `<p class="text-[11px] font-mono text-vercel-muted p-2">You can create a solo group now and invite friends later.</p>`;
+      } else {
+        listEl.innerHTML = me.friends.map(fid => {
+          const f = db.users[fid];
+          if (!f) return '';
+          return `
+            <label class="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-vercel-hover cursor-pointer">
+              <span class="flex items-center gap-2">
+                ${renderAvatarHTML(f.avatar, 'w-6 h-6 text-[10px]')}
+                <span class="text-xs font-medium">${escapeHTML(f.displayName)}</span>
+                <span class="font-mono text-[10px] text-vercel-muted">@${f.username}</span>
+              </span>
+              <input type="checkbox" name="group-invite-friend" value="${f.id}" class="rounded border-vercel-border bg-vercel-surface" />
+            </label>
+          `;
+        }).join('');
+      }
+
+      document.getElementById('create-group-modal').classList.remove('hidden');
+      document.getElementById('create-group-modal').classList.add('flex');
+    }
+
+    async function handleCreateGroupSubmit(e) {
+      e.preventDefault();
+      const db = loadDB();
+      const me = db.users[appState.currentUserId];
+      if (!me) return;
+
+      const rawName = document.getElementById('new-group-name').value.trim().toLowerCase().replace(/[^a-z0-9-_]/g, '-');
+      const topic = document.getElementById('new-group-topic').value.trim() || 'End-to-end encrypted study group';
+      if (!rawName) return;
+
+      const checked = Array.from(document.querySelectorAll('input[name="group-invite-friend"]:checked')).map(el => el.value);
+      const members = Array.from(new Set([me.id, ...checked]));
+
+      const rawGroupKey = await CryptoEngine.generateGroupMasterKey();
+      const wrappedKeys = {};
+      for (const memberId of members) {
+        const member = db.users[memberId];
+        if (!member) continue;
+        wrappedKeys[memberId] = {
+          wrappedBy: me.id,
+          ...(await CryptoEngine.wrapGroupKeyForMember(rawGroupKey, me.privateJwk, member.publicJwk))
+        };
+      }
+
+      const groupId = 'grp_' + Date.now().toString(36);
+      db.groups[groupId] = {
+        id: groupId,
+        name: rawName,
+        topic,
+        createdBy: me.id,
+        members,
+        wrappedKeys
+      };
+
+      saveDB(db, 'group_created', { groupId });
+      document.getElementById('new-group-name').value = '';
+      document.getElementById('new-group-topic').value = '';
+      closeModal('create-group-modal');
+      setRailActive('chats');
+      renderSidebarLists();
+      selectConversation(`group:${groupId}`);
+      showToast(`Created study group #${rawName}`);
+    }
+
+    function openInviteModal() {
+      if (!appState.activeConversationId || !appState.activeConversationId.startsWith('group:')) return;
+      const groupId = appState.activeConversationId.split(':')[1];
+      const db = loadDB();
+      const me = db.users[appState.currentUserId];
+      const group = db.groups[groupId];
+      if (!me || !group) return;
+
+      const availableFriends = me.friends.filter(fid => !group.members.includes(fid));
+      const bodyEl = document.getElementById('invite-group-body');
+
+      if (availableFriends.length === 0) {
+        bodyEl.innerHTML = `<p class="text-xs text-vercel-muted p-3 rounded-xl border border-vercel-border bg-vercel-bg">All of your current friends are already in #${escapeHTML(group.name)}. Add more friends from the directory first!</p>`;
+      } else {
+        bodyEl.innerHTML = availableFriends.map(fid => {
+          const f = db.users[fid];
+          if (!f) return '';
+          return `
+            <div class="flex items-center justify-between p-2.5 rounded-xl bg-vercel-bg border border-vercel-border">
+              <div class="flex items-center gap-2.5">
+                ${renderAvatarHTML(f.avatar, 'w-7 h-7 text-xs')}
+                <div>
+                  <div class="text-xs font-semibold">${escapeHTML(f.displayName)}</div>
+                  <div class="text-[10px] font-mono text-vercel-muted">@${f.username}</div>
+                </div>
+              </div>
+              <button onclick="inviteMemberToGroup('${groupId}', '${f.id}')" class="px-2.5 py-1 rounded-lg bg-vercel-text text-vercel-bg text-xs font-medium hover:opacity-90">+ Invite</button>
+            </div>
+          `;
+        }).join('');
+      }
+
+      document.getElementById('invite-group-modal').classList.remove('hidden');
+      document.getElementById('invite-group-modal').classList.add('flex');
+    }
+
+    async function inviteMemberToGroup(groupId, targetUserId) {
+      const db = loadDB();
+      const me = db.users[appState.currentUserId];
+      const group = db.groups[groupId];
+      const target = db.users[targetUserId];
+      if (!me || !group || !target) return;
+
+      const myWrapped = group.wrappedKeys[me.id];
+      const inviter = db.users[myWrapped.wrappedBy];
+      const groupAesKey = await CryptoEngine.unwrapGroupKey(myWrapped, me.privateJwk, inviter.publicJwk);
+      const rawGroupKey = await window.crypto.subtle.exportKey('raw', groupAesKey);
+
+      group.members.push(targetUserId);
+      group.wrappedKeys[targetUserId] = {
+        wrappedBy: me.id,
+        ...(await CryptoEngine.wrapGroupKeyForMember(rawGroupKey, me.privateJwk, target.publicJwk))
+      };
+
+      saveDB(db, 'group_member_invited', { groupId, targetUserId });
+      renderSidebarLists();
+      openInviteModal();
+      showToast(`Invited @${target.username} to #${group.name}`);
+    }
+
+    // =========================================================================
+    // 8. CONVERSATIONS, ENCRYPTED MESSAGING & ATTACHMENTS
+    // =========================================================================
+    async function getActiveConversationAESKey(convId) {
+      const db = loadDB();
+      const me = db.users[appState.currentUserId];
+      if (!me || !convId) return null;
+
+      if (convId.startsWith('dm:')) {
+        const pair = convId.slice(3).split('__');
+        const otherId = pair[0] === me.id ? pair[1] : pair[0];
+        const other = db.users[otherId];
+        if (!other) return null;
+        return CryptoEngine.derivePairwiseAESKey(me.privateJwk, other.publicJwk, 'deskspace-dm-v1');
+      }
+
+      if (convId.startsWith('group:')) {
+        const groupId = convId.slice(6);
+        const group = db.groups[groupId];
+        if (!group || !group.wrappedKeys[me.id]) return null;
+        const myWrapped = group.wrappedKeys[me.id];
+        const wrapperUser = db.users[myWrapped.wrappedBy];
+        if (!wrapperUser) return null;
+        return CryptoEngine.unwrapGroupKey(myWrapped, me.privateJwk, wrapperUser.publicJwk);
+      }
+      return null;
+    }
+
+    function renderEmptyConversationState() {
+      document.getElementById('header-avatar-wrap').innerHTML = '';
+      document.getElementById('header-title').textContent = 'Welcome to Math.educaton';
+      document.getElementById('header-subtitle').textContent = 'Add a friend or create a study group to start messaging';
+      document.getElementById('btn-header-invite').classList.add('hidden');
+      document.getElementById('message-feed').innerHTML = `
+        <div class="h-full flex flex-col items-center justify-center text-center max-w-sm mx-auto space-y-3 py-12">
+          <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-500 to-emerald-400 text-white flex items-center justify-center shadow-md">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 8h4M7 6v4" />
+              <path d="M15 6l4 4M19 6l-4 4" />
+              <path d="M6.5 14.5c1.5 2.5 4.2 3.5 5.5 3.5s4-1 5.5-3.5" />
+            </svg>
+          </div>
+          <h2 class="text-base font-semibold tracking-tight">Your Study Workspace is Ready</h2>
+          <p class="text-xs text-vercel-muted leading-relaxed">Search for classmates by <span class="font-mono text-vercel-text">@username</span>, share an invite by email, or create a private study group.</p>
+          <div class="flex items-center gap-2 pt-2">
+            <button onclick="openDirectoryModal('directory')" class="px-3 py-1.5 rounded-lg bg-vercel-text text-vercel-bg text-xs font-medium hover:opacity-90">+ Find Friends</button>
+            <button onclick="openCreateGroupModal()" class="px-3 py-1.5 rounded-lg border border-vercel-border bg-vercel-surface hover:border-vercel-borderStrong text-xs font-medium">New Group</button>
+          </div>
+        </div>
+      `;
+    }
+
+    async function selectConversation(convId) {
+      appState.activeConversationId = convId;
+      renderSidebarLists();
+      updateActiveHeaderPresence();
+      await renderMessageFeed();
+    }
+
+    function updateActiveHeaderPresence() {
+      const convId = appState.activeConversationId;
+      if (!convId) return;
+      const db = loadDB();
+      const me = db.users[appState.currentUserId];
+      if (!me) return;
+
+      const avatarWrap = document.getElementById('header-avatar-wrap');
+      const titleEl = document.getElementById('header-title');
+      const subEl = document.getElementById('header-subtitle');
+      const inviteBtn = document.getElementById('btn-header-invite');
+
+      if (convId.startsWith('dm:')) {
+        const pair = convId.slice(3).split('__');
+        const otherId = pair[0] === me.id ? pair[1] : pair[0];
+        const other = db.users[otherId];
+        if (!other) return;
+        const presence = getUserPresence(other.id);
+        avatarWrap.innerHTML = `
+          <div class="relative">
+            ${renderAvatarHTML(other.avatar, 'w-8 h-8 text-xs')}
+            <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ${getPresenceDotClass(presence.status)} ring-2 ring-vercel-bg"></span>
+          </div>
+        `;
+        titleEl.textContent = other.displayName;
+        subEl.textContent = `@${other.username} • ${presence.label}`;
+        inviteBtn.classList.add('hidden');
+        inviteBtn.classList.remove('flex');
+      } else if (convId.startsWith('group:')) {
+        const groupId = convId.slice(6);
+        const group = db.groups[groupId];
+        if (!group) return;
+        avatarWrap.innerHTML = `<div class="w-8 h-8 rounded-xl bg-vercel-elevated border border-vercel-borderStrong flex items-center justify-center font-mono text-sm text-vercel-green">#</div>`;
+        titleEl.textContent = `#${group.name}`;
+        subEl.textContent = `${group.members.length} members • ${group.topic}`;
+        inviteBtn.classList.remove('hidden');
+        inviteBtn.classList.add('flex');
+      }
+    }
+
+    async function renderMessageFeed() {
+      const convId = appState.activeConversationId;
+      const feedEl = document.getElementById('message-feed');
+      if (!convId) {
+        renderEmptyConversationState();
+        return;
+      }
+
+      const db = loadDB();
+      const msgs = db.messages[convId] || [];
+      if (msgs.length === 0) {
+        feedEl.innerHTML = `
+          <div class="h-full flex flex-col items-center justify-center text-center py-12 space-y-2">
+            <p class="text-xs font-mono text-vercel-muted">No messages yet</p>
+            <p class="text-xs text-vercel-subtle">Send a message or attach a study file below.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const aesKey = await getActiveConversationAESKey(convId);
+      const rendered = [];
+
+      for (const m of msgs) {
+        const sender = db.users[m.senderId] || { displayName: m.senderId, username: m.senderId, avatar: null };
+        const isMe = m.senderId === appState.currentUserId;
+        let plaintext = appState.decryptedCache[m.id];
+        if (plaintext === undefined && aesKey && m.ciphertext) {
+          try {
+            plaintext = await CryptoEngine.decryptText(aesKey, m.iv, m.ciphertext);
+            appState.decryptedCache[m.id] = plaintext;
+          } catch (err) {
+            plaintext = '[Unable to decrypt message]';
+          }
+        }
+
+        const timeStr = new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const attachmentHTML = m.attachment ? `
+          <div class="mt-2 p-2.5 rounded-xl bg-vercel-bg border border-vercel-border flex items-center justify-between gap-3 max-w-xs">
+            <div class="min-w-0">
+              <div class="text-xs font-medium truncate">${escapeHTML(m.attachment.name)}</div>
+              <div class="text-[10px] font-mono text-vercel-muted">${formatBytes(m.attachment.size)}</div>
+            </div>
+            <button onclick="downloadDecryptedAttachment('${convId}', '${m.id}')" class="px-2.5 py-1 rounded-lg bg-vercel-elevated hover:bg-vercel-hover border border-vercel-border text-[11px] font-mono text-vercel-text shrink-0">
+              Download ↓
+            </button>
+          </div>
+        ` : '';
+
+        rendered.push(`
+          <div class="group flex items-start gap-3 py-1.5 px-2 rounded-xl hover:bg-vercel-surface/70 transition-colors msg-animate">
+            ${renderAvatarHTML(sender.avatar, 'w-8 h-8 text-xs mt-0.5')}
+            <div class="flex-1 min-w-0">
+              <div class="flex items-baseline gap-2">
+                <span class="text-xs font-semibold ${isMe ? 'text-vercel-text' : 'text-vercel-blue'}">${escapeHTML(sender.displayName)}</span>
+                <span class="font-mono text-[10px] text-vercel-subtle">@${escapeHTML(sender.username)} • ${timeStr}</span>
+              </div>
+              ${plaintext ? `<div class="text-sm text-vercel-text whitespace-pre-wrap break-words leading-relaxed mt-0.5">${escapeHTML(plaintext)}</div>` : ''}
+              ${attachmentHTML}
+            </div>
+          </div>
+        `);
+      }
+
+      feedEl.innerHTML = rendered.join('');
+      feedEl.scrollTop = feedEl.scrollHeight;
+    }
+
+    function handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        appState.stagedFile = {
+          name: file.name,
+          type: file.type || 'application/octet-stream',
+          size: file.size,
+          arrayBuffer: e.target.result
+        };
+        document.getElementById('staged-file-name').textContent = file.name;
+        document.getElementById('staged-file-meta').textContent = `${formatBytes(file.size)} • Ready to send`;
+        document.getElementById('composer-attachment-bar').classList.remove('hidden');
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function clearStagedFile() {
+      appState.stagedFile = null;
+      document.getElementById('file-attachment-input').value = '';
+      document.getElementById('composer-attachment-bar').classList.add('hidden');
+    }
+
+    async function sendEncryptedMessage() {
+      const convId = appState.activeConversationId;
+      if (!convId) {
+        showToast('Select or start a conversation first');
+        return;
+      }
+
+      const inputEl = document.getElementById('message-input');
+      const text = inputEl.value.trim();
+      const fileObj = appState.stagedFile;
+      if (!text && !fileObj) return;
+
+      const aesKey = await getActiveConversationAESKey(convId);
+      if (!aesKey) {
+        showToast('Missing conversation key');
+        return;
+      }
+
+      const msgId = 'msg_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 6);
+      const encryptedText = await CryptoEngine.encryptText(aesKey, text);
+
+      let attachmentMeta = null;
+      if (fileObj) {
+        const encBin = await CryptoEngine.encryptBinary(aesKey, fileObj.arrayBuffer);
+        const blobId = 'blob_' + msgId;
+        await EncryptedBlobDB.putBlob(blobId, encBin.encryptedBuf);
+        attachmentMeta = {
+          blobId,
+          iv: encBin.iv,
+          name: fileObj.name,
+          type: fileObj.type,
+          size: fileObj.size
+        };
+      }
+
+      const db = loadDB();
+      if (!db.messages[convId]) db.messages[convId] = [];
+      db.messages[convId].push({
+        id: msgId,
+        senderId: appState.currentUserId,
+        timestamp: Date.now(),
+        iv: encryptedText.iv,
+        ciphertext: encryptedText.ciphertext,
+        attachment: attachmentMeta
+      });
+
+      appState.decryptedCache[msgId] = text;
+      inputEl.value = '';
+      inputEl.style.height = 'auto';
+      clearStagedFile();
+
+      saveDB(db, 'new_message', { convId, msgId });
+      await renderMessageFeed();
+    }
+
+    async function downloadDecryptedAttachment(convId, msgId) {
+      const db = loadDB();
+      const msg = (db.messages[convId] || []).find(m => m.id === msgId);
+      if (!msg || !msg.attachment) return;
+
+      const aesKey = await getActiveConversationAESKey(convId);
+      const encryptedBuf = await EncryptedBlobDB.getBlob(msg.attachment.blobId);
+      if (!aesKey || !encryptedBuf) {
+        showToast('Attachment data unavailable');
+        return;
+      }
+
+      const plainBuf = await CryptoEngine.decryptBinary(aesKey, msg.attachment.iv, encryptedBuf);
+      const blob = new Blob([plainBuf], { type: msg.attachment.type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = msg.attachment.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }
+
+    // =========================================================================
+    // 9. RIGHT DRAWER, PROFILE EDITOR & ACCOUNT SECURITY MODALS
+    // =========================================================================
+    function toggleRightDrawer() {
+      const drawer = document.getElementById('right-drawer');
+      if (drawer.classList.contains('translate-x-full')) {
+        renderRightDrawerContent();
+        drawer.classList.remove('translate-x-full');
+      } else {
+        closeRightDrawer();
+      }
+    }
+
+    function closeRightDrawer() {
+      document.getElementById('right-drawer').classList.add('translate-x-full');
+    }
+
+    function renderRightDrawerContent() {
+      const bodyEl = document.getElementById('right-drawer-body');
+      const convId = appState.activeConversationId;
+      if (!convId) {
+        bodyEl.innerHTML = `<p class="text-xs text-vercel-muted">Select a conversation to view details.</p>`;
+        return;
+      }
+
+      const db = loadDB();
+      const me = db.users[appState.currentUserId];
+
+      if (convId.startsWith('dm:')) {
+        const pair = convId.slice(3).split('__');
+        const otherId = pair[0] === me.id ? pair[1] : pair[0];
+        const other = db.users[otherId];
+        if (!other) return;
+        const presence = getUserPresence(other.id);
+        bodyEl.innerHTML = `
+          <div class="p-4 rounded-xl bg-vercel-bg border border-vercel-border flex flex-col items-center text-center space-y-2">
+            ${renderAvatarHTML(other.avatar, 'w-14 h-14 text-base')}
+            <div>
+              <div class="text-sm font-semibold">${escapeHTML(other.displayName)}</div>
+              <div class="text-xs font-mono text-vercel-muted">@${escapeHTML(other.username)}</div>
+            </div>
+            <span class="text-[11px] font-mono text-vercel-green">${presence.label}</span>
+            ${other.bio ? `<p class="text-xs text-vercel-muted pt-1">${escapeHTML(other.bio)}</p>` : ''}
+          </div>
+        `;
+      } else if (convId.startsWith('group:')) {
+        const groupId = convId.slice(6);
+        const group = db.groups[groupId];
+        if (!group) return;
+        bodyEl.innerHTML = `
+          <div class="space-y-3">
+            <div class="p-3 rounded-xl bg-vercel-bg border border-vercel-border">
+              <div class="text-xs font-semibold">#${escapeHTML(group.name)}</div>
+              <div class="text-[11px] text-vercel-muted mt-0.5">${escapeHTML(group.topic)}</div>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-mono uppercase tracking-wider text-vercel-muted">Members (${group.members.length})</span>
+              <button onclick="openInviteModal()" class="text-[11px] font-mono text-vercel-blue hover:underline">+ Invite</button>
+            </div>
+            <div class="space-y-1.5">
+              ${group.members.map(mid => {
+                const u = db.users[mid];
+                if (!u) return '';
+                const p = getUserPresence(u.id);
+                return `
+                  <div class="flex items-center justify-between p-2 rounded-lg bg-vercel-bg border border-vercel-border">
+                    <div class="flex items-center gap-2 min-w-0">
+                      ${renderAvatarHTML(u.avatar, 'w-6 h-6 text-[10px]')}
+                      <div class="min-w-0">
+                        <div class="text-xs font-medium truncate">${escapeHTML(u.displayName)}</div>
+                        <div class="text-[10px] font-mono text-vercel-muted truncate">@${escapeHTML(u.username)}</div>
+                      </div>
+                    </div>
+                    <span class="w-2 h-2 rounded-full ${getPresenceDotClass(p.status)}"></span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    let editProfileAvatarDraft = null;
+
+    function openProfileModal() {
+      const db = loadDB();
+      const me = db.users[appState.currentUserId];
+      if (!me) return;
+      editProfileAvatarDraft = me.avatar ? { ...me.avatar } : { type: 'preset', value: '▲', bg: 'bg-zinc-800 text-white' };
+
+      const bodyEl = document.getElementById('profile-modal-body');
+      bodyEl.innerHTML = `
+        <form onsubmit="handleProfileSave(event)" class="space-y-4">
+          <div class="flex items-center gap-3.5">
+            <div id="edit-profile-avatar-preview">
+              ${renderAvatarHTML(editProfileAvatarDraft, 'w-14 h-14 text-base')}
+            </div>
+            <div class="flex-1 space-y-2">
+              <div class="flex items-center gap-2">
+                <label class="px-2.5 py-1.5 rounded-lg bg-vercel-elevated hover:bg-vercel-hover border border-vercel-border text-xs font-medium cursor-pointer transition-colors">
+                  <span>Change Photo</span>
+                  <input type="file" accept="image/*" class="hidden" onchange="handleEditProfileAvatarUpload(event)" />
+                </label>
+                <span class="text-[11px] text-vercel-muted">or preset:</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                ${PRESET_AVATARS.map(p => `
+                  <button type="button" onclick="selectEditPresetAvatar('${p.label}', '${p.bg}')" class="w-6 h-6 rounded-full ${p.bg} text-[11px] font-mono flex items-center justify-center border border-vercel-borderStrong hover:scale-105 transition-transform">
+                    ${p.label}
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] font-mono uppercase tracking-wider text-vercel-muted mb-1">Username</label>
+              <div class="relative flex items-center">
+                <span class="absolute left-2.5 font-mono text-xs text-vercel-muted">@</span>
+                <input id="edit-profile-username" type="text" required pattern="[a-zA-Z0-9_]{3,20}" value="${escapeHTML(me.username)}" class="w-full pl-6 pr-2.5 py-2 rounded-lg bg-vercel-bg border border-vercel-border focus:border-vercel-borderStrong text-xs text-vercel-text focus:outline-none font-mono" />
+              </div>
+            </div>
+            <div>
+              <label class="block text-[11px] font-mono uppercase tracking-wider text-vercel-muted mb-1">Display Name</label>
+              <input id="edit-profile-displayname" type="text" required value="${escapeHTML(me.displayName)}" class="w-full px-2.5 py-2 rounded-lg bg-vercel-bg border border-vercel-border focus:border-vercel-borderStrong text-xs text-vercel-text focus:outline-none" />
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-mono uppercase tracking-wider text-vercel-muted mb-1">Status Bio</label>
+            <input id="edit-profile-bio" type="text" value="${escapeHTML(me.bio || '')}" placeholder="Studying algebra & geometry..." class="w-full px-3 py-2 rounded-lg bg-vercel-bg border border-vercel-border focus:border-vercel-borderStrong text-xs text-vercel-text focus:outline-none" />
+          </div>
+
+          <div class="flex items-center justify-end gap-2 pt-1">
+            <button type="button" onclick="closeModal('profile-modal'); setRailActive('chats');" class="px-3 py-2 rounded-lg border border-vercel-border text-xs text-vercel-muted hover:text-vercel-text">Cancel</button>
+            <button type="submit" class="px-3.5 py-2 rounded-lg bg-vercel-text text-vercel-bg font-medium text-xs hover:opacity-90">Save Profile</button>
+          </div>
+        </form>
+      `;
+
+      document.getElementById('profile-modal').classList.remove('hidden');
+      document.getElementById('profile-modal').classList.add('flex');
+    }
+
+    function selectEditPresetAvatar(label, bg) {
+      editProfileAvatarDraft = { type: 'preset', value: label, bg };
+      document.getElementById('edit-profile-avatar-preview').innerHTML = renderAvatarHTML(editProfileAvatarDraft, 'w-14 h-14 text-base');
+    }
+
+    function handleEditProfileAvatarUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const size = 128;
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext('2d');
+          const minSide = Math.min(img.width, img.height);
+          const sx = (img.width - minSide) / 2;
+          const sy = (img.height - minSide) / 2;
+          ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+          editProfileAvatarDraft = { type: 'image', value: dataUrl, bg: '' };
+          document.getElementById('edit-profile-avatar-preview').innerHTML = renderAvatarHTML(editProfileAvatarDraft, 'w-14 h-14 text-base');
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function handleProfileSave(e) {
+      e.preventDefault();
+      const db = loadDB();
+      const oldId = appState.currentUserId;
+      const me = db.users[oldId];
+      if (!me) return;
+
+      const newUsername = document.getElementById('edit-profile-username').value.trim().toLowerCase();
+      const newDisplayName = document.getElementById('edit-profile-displayname').value.trim();
+      const newBio = document.getElementById('edit-profile-bio').value.trim();
+
+      if (newUsername !== oldId && db.users[newUsername]) {
+        showToast(`Username @${newUsername} is already taken`);
+        return;
+      }
+
+      me.displayName = newDisplayName;
+      me.bio = newBio;
+      if (editProfileAvatarDraft) me.avatar = editProfileAvatarDraft;
+
+      if (newUsername !== oldId) {
+        me.id = newUsername;
+        me.username = newUsername;
+        db.users[newUsername] = me;
+        delete db.users[oldId];
+
+        // Update friend lists & requests across all users
+        Object.values(db.users).forEach(u => {
+          u.friends = (u.friends || []).map(id => id === oldId ? newUsername : id);
+          u.incomingRequests = (u.incomingRequests || []).map(id => id === oldId ? newUsername : id);
+          u.outgoingRequests = (u.outgoingRequests || []).map(id => id === oldId ? newUsername : id);
+        });
+
+        // Update groups & wrapped keys
+        Object.values(db.groups).forEach(g => {
+          g.members = g.members.map(id => id === oldId ? newUsername : id);
+          if (g.createdBy === oldId) g.createdBy = newUsername;
+          if (g.wrappedKeys[oldId]) {
+            g.wrappedKeys[newUsername] = g.wrappedKeys[oldId];
+            delete g.wrappedKeys[oldId];
+          }
+          Object.values(g.wrappedKeys).forEach(wk => {
+            if (wk.wrappedBy === oldId) wk.wrappedBy = newUsername;
+          });
+        });
+
+        // Migrate DM conversation keys & message senderIds
+        const updatedMessages = {};
+        Object.entries(db.messages).forEach(([convId, msgs]) => {
+          let nextConvId = convId;
+          if (convId.startsWith('dm:')) {
+            const pair = convId.slice(3).split('__').map(id => id === oldId ? newUsername : id);
+            nextConvId = getDMConversationId(pair[0], pair[1]);
+          }
+          updatedMessages[nextConvId] = msgs.map(m => m.senderId === oldId ? { ...m, senderId: newUsername } : m);
+        });
+        db.messages = updatedMessages;
+
+        if (appState.activeConversationId && appState.activeConversationId.startsWith('dm:')) {
+          const pair = appState.activeConversationId.slice(3).split('__').map(id => id === oldId ? newUsername : id);
+          appState.activeConversationId = getDMConversationId(pair[0], pair[1]);
+        }
+
+        appState.currentUserId = newUsername;
+        sessionStorage.setItem('deskspace_session_user', newUsername);
+      }
+
+      saveDB(db, 'profile_updated', { userId: appState.currentUserId });
+      syncCurrentUserAvatars(db.users[appState.currentUserId]);
+      renderSidebarLists();
+      updateActiveHeaderPresence();
+      renderMessageFeed();
+      closeModal('profile-modal');
+      setRailActive('chats');
+      showToast('Profile updated');
+    }
+
+    function openAccountSecurityModal() {
+      const db = loadDB();
+      const me = db.users[appState.currentUserId];
+      if (!me) return;
+
+      const bodyEl = document.getElementById('security-modal-body');
+      bodyEl.innerHTML = `
+        <div class="space-y-4">
+          <div class="p-3.5 rounded-xl bg-vercel-bg border border-vercel-border space-y-1.5">
+            <div class="text-[11px] font-mono uppercase tracking-wider text-vercel-muted">Device Safety Fingerprint</div>
+            <div class="font-mono text-xs text-vercel-green select-all">${escapeHTML(me.fingerprint || 'N/A')}</div>
+          </div>
+
+          <div class="flex items-center justify-between p-3 rounded-xl bg-vercel-bg border border-vercel-border">
+            <div>
+              <div class="text-xs font-medium">Appearance Theme</div>
+              <div class="text-[11px] text-vercel-muted">Switch between Dark and Light mode</div>
+            </div>
+            <button onclick="toggleTheme(); openAccountSecurityModal();" class="px-3 py-1.5 rounded-lg bg-vercel-elevated hover:bg-vercel-hover border border-vercel-border text-xs font-medium">
+              ${appState.theme === 'dark' ? 'Switch to Light' : 'Switch to Dark'}
+            </button>
+          </div>
+
+          <div class="pt-2 border-t border-vercel-border flex items-center justify-between">
+            <button onclick="closeModal('security-modal'); setRailActive('chats');" class="px-3 py-2 rounded-lg border border-vercel-border text-xs text-vercel-muted hover:text-vercel-text">Close</button>
+            <button onclick="closeModal('security-modal'); logoutUser();" class="px-3.5 py-2 rounded-lg bg-vercel-red text-white text-xs font-medium hover:opacity-90">
+              Lock Vault & Sign Out
+            </button>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('security-modal').classList.remove('hidden');
+      document.getElementById('security-modal').classList.add('flex');
+    }
+
+    // =========================================================================
+    // 10. UI HELPERS: THEME, RAIL, COMMAND PALETTE, TOASTS & REAL-TIME BUS
+    // =========================================================================
+    function syncCurrentUserAvatars(me) {
+      if (!me) return;
+      document.getElementById('sidebar-user-name').textContent = me.displayName;
+      document.getElementById('sidebar-user-handle').textContent = '@' + me.username;
+
+      const sbAvatar = document.getElementById('sidebar-user-avatar');
+      const railAvatar = document.getElementById('rail-user-avatar');
+      [sbAvatar, railAvatar].forEach(el => {
+        if (!el) return;
+        if (me.avatar && me.avatar.type === 'image') {
+          el.className = 'w-7 h-7 rounded-full overflow-hidden border border-vercel-borderStrong';
+          el.innerHTML = `<img src="${me.avatar.value}" class="w-full h-full object-cover" alt="Avatar" />`;
+        } else {
+          el.className = `w-7 h-7 rounded-full ${(me.avatar && me.avatar.bg) || 'bg-zinc-700 text-white'} flex items-center justify-center text-xs font-semibold border border-vercel-borderStrong`;
+          el.textContent = (me.avatar && me.avatar.value) || '▲';
+        }
+      });
+    }
+
+    function setRailActive(section) {
+      const sections = ['chats', 'friends', 'email', 'group', 'security', 'profile'];
+      sections.forEach(s => {
+        const pill = document.getElementById(`rail-pill-${s}`);
+        const btn = document.getElementById(`rail-btn-${s}`);
+        if (!pill || !btn) return;
+        if (s === section) {
+          pill.classList.remove('hidden');
+          if (s !== 'profile') {
+            btn.className = 'relative w-9 h-9 rounded-xl flex items-center justify-center bg-vercel-elevated text-vercel-text border border-vercel-borderStrong transition-all';
+          }
+        } else {
+          pill.classList.add('hidden');
+          if (s !== 'profile') {
+            btn.className = 'relative w-9 h-9 rounded-xl flex items-center justify-center text-vercel-muted hover:text-vercel-text hover:bg-vercel-hover border border-transparent transition-all';
+          }
+        }
+      });
+    }
+
+    function closeModal(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.classList.add('hidden');
+      el.classList.remove('flex');
+    }
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      if (html.classList.contains('dark')) {
+        html.classList.remove('dark');
+        html.classList.add('light');
+        appState.theme = 'light';
+      } else {
+        html.classList.remove('light');
+        html.classList.add('dark');
+        appState.theme = 'dark';
+      }
+      updateThemeIcon();
+    }
+
+    function updateThemeIcon() {
+      const btn = document.getElementById('theme-toggle-btn');
+      if (!btn) return;
+      const isDark = document.documentElement.classList.contains('dark');
+      btn.innerHTML = isDark
+        ? `<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>`
+        : `<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+    }
+
+    function showToast(message) {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+      const toast = document.createElement('div');
+      toast.className = 'pointer-events-auto px-3.5 py-2.5 rounded-xl bg-vercel-elevated border border-vercel-borderStrong text-xs text-vercel-text shadow-xl msg-animate flex items-center gap-2';
+      toast.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-vercel-green shrink-0"></span><span>${escapeHTML(message)}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.2s ease';
+        setTimeout(() => toast.remove(), 220);
+      }, 3200);
+    }
+
+    function copyTextFallback(text, successMsg = 'Copied to clipboard') {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        if (successMsg) showToast(successMsg);
+      } catch (err) {
+        console.error('Copy failed', err);
+      }
+      document.body.removeChild(ta);
+    }
+
+    function escapeHTML(str) {
+      return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function formatBytes(bytes) {
+      if (!bytes) return '0 B';
+      const units = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
+      return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+    }
+
+    function autoResizeTextarea(el) {
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+    }
+
+    function handleComposerKeydown(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendEncryptedMessage();
+      }
+    }
+
+    function toggleComposerEmojiPicker() {
+      document.getElementById('composer-emoji-picker').classList.toggle('hidden');
+    }
+
+    function insertEmojiToComposer(emoji) {
+      const input = document.getElementById('message-input');
+      input.value += emoji;
+      input.focus();
+      document.getElementById('composer-emoji-picker').classList.add('hidden');
+    }
+
+    let lastTypingBroadcast = 0;
+    function broadcastTyping() {
+      const now = Date.now();
+      if (!appState.activeConversationId || now - lastTypingBroadcast < 1500) return;
+      lastTypingBroadcast = now;
+      broadcastChannel.postMessage({
+        type: 'typing',
+        payload: { convId: appState.activeConversationId, userId: appState.currentUserId },
+        senderTab: TAB_ID
+      });
+    }
+
+    // Command Palette (⌘K)
+    function openCommandPalette() {
+      const modal = document.getElementById('command-palette-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      const input = document.getElementById('command-search-input');
+      input.value = '';
+      renderCommandResults('');
+      setTimeout(() => input.focus(), 20);
+    }
+
+    function closeCommandPalette() {
+      closeModal('command-palette-modal');
+    }
+
+    function renderCommandResults(query) {
+      const db = loadDB();
+      const me = db.users[appState.currentUserId];
+      if (!me) return;
+      const q = (query || '').trim().toLowerCase().replace(/^@/, '');
+
+      const items = [
+        { label: 'Find Friends by @username', sub: 'Open directory & friend requests', action: () => { closeCommandPalette(); openDirectoryModal('directory'); } },
+        { label: 'Share Invite by Email', sub: 'Send invite link via email', action: () => { closeCommandPalette(); openDirectoryModal('email'); } },
+        { label: 'Create Study Group', sub: 'Start a new encrypted group', action: () => { closeCommandPalette(); openCreateGroupModal(); } },
+        { label: 'Edit Profile & Avatar', sub: `@${me.username}`, action: () => { closeCommandPalette(); openProfileModal(); } }
+      ];
+
+      Object.values(db.groups).filter(g => g.members.includes(me.id)).forEach(g => {
+        items.push({
+          label: `#${g.name}`,
+          sub: `Study group • ${g.members.length} members`,
+          action: () => { closeCommandPalette(); selectConversation(`group:${g.id}`); }
+        });
+      });
+
+      me.friends.forEach(fid => {
+        const f = db.users[fid];
+        if (!f) return;
+        items.push({
+          label: f.displayName,
+          sub: `@${f.username} • Direct message`,
+          action: () => { closeCommandPalette(); selectConversation(getDMConversationId(me.id, f.id)); }
+        });
+      });
+
+      const filtered = items.filter(i => i.label.toLowerCase().includes(q) || i.sub.toLowerCase().includes(q));
+      window._cmdActions = filtered;
+      const listEl = document.getElementById('command-results-list');
+      listEl.innerHTML = filtered.length === 0
+        ? `<div class="p-4 text-center text-xs text-vercel-muted">No matching commands or chats</div>`
+        : filtered.map((item, idx) => `
+          <button onclick="window._cmdActions[${idx}].action()" class="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-vercel-hover text-left transition-colors">
+            <span class="text-xs font-medium text-vercel-text">${escapeHTML(item.label)}</span>
+            <span class="font-mono text-[10px] text-vercel-muted">${escapeHTML(item.sub)}</span>
+          </button>
+        `).join('');
+    }
+
+    function handleCommandKeydown(e) {
+      if (e.key === 'Escape') closeCommandPalette();
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        openCommandPalette();
+      } else if (e.key === 'Escape') {
+        closeCommandPalette();
+        closeRightDrawer();
+      }
+    });
+
+    async function simulateIncomingPeerEvent() {
+      const convId = appState.activeConversationId;
+      if (!convId) {
+        showToast('Open a friend chat or group first to test peer ping');
+        return;
+      }
+      const db = loadDB();
+      const me = db.users[appState.currentUserId];
+      let peer = null;
+
+      if (convId.startsWith('dm:')) {
+        const pair = convId.slice(3).split('__');
+        const otherId = pair[0] === me.id ? pair[1] : pair[0];
+        peer = db.users[otherId];
+      } else if (convId.startsWith('group:')) {
+        const group = db.groups[convId.slice(6)];
+        const otherId = group && group.members.find(id => id !== me.id);
+        peer = otherId ? db.users[otherId] : null;
+      }
+
+      if (!peer) {
+        showToast('Add a friend to this conversation to simulate a reply');
+        return;
+      }
+
+      const aesKey = await getActiveConversationAESKey(convId);
+      const sampleReplies = [
+        'Hey! Ready to go over the algebra problem set?',
+        'Just reviewed your notes — looks super clean!',
+        'Let’s solve question 4 step by step.'
+      ];
+      const replyText = sampleReplies[Math.floor(Math.random() * sampleReplies.length)];
+      const encrypted = await CryptoEngine.encryptText(aesKey, replyText);
+      const msgId = 'msg_' + Date.now().toString(36);
+
+      if (!db.messages[convId]) db.messages[convId] = [];
+      db.messages[convId].push({
+        id: msgId,
+        senderId: peer.id,
+        timestamp: Date.now(),
+        iv: encrypted.iv,
+        ciphertext: encrypted.ciphertext,
+        attachment: null
+      });
+
+      saveDB(db, 'new_message', { convId, msgId });
+      await renderMessageFeed();
+    }
+
+    // Cross-tab BroadcastChannel & storage listener
+    let typingHideTimer = null;
+    broadcastChannel.onmessage = async (event) => {
+      const { type, payload } = event.data || {};
+      if (!appState.currentUserId) return;
+
+      if (type === 'typing' && payload && payload.convId === appState.activeConversationId && payload.userId !== appState.currentUserId) {
+        const db = loadDB();
+        const typer = db.users[payload.userId];
+        const indicator = document.getElementById('typing-indicator');
+        const label = document.getElementById('typing-user-label');
+        if (indicator && label) {
+          label.textContent = `${typer ? typer.displayName : payload.userId} is typing...`;
+          indicator.classList.remove('hidden');
+          clearTimeout(typingHideTimer);
+          typingHideTimer = setTimeout(() => indicator.classList.add('hidden'), 2000);
+        }
+        return;
+      }
+
+      renderSidebarLists();
+      updateActiveHeaderPresence();
+      if (type === 'new_message' && payload && payload.convId === appState.activeConversationId) {
+        await renderMessageFeed();
+      }
+    };
+
+    window.addEventListener('storage', async (e) => {
+      if (e.key === STORAGE_KEY && appState.currentUserId) {
+        renderSidebarLists();
+        updateActiveHeaderPresence();
+        await renderMessageFeed();
+      }
+    });
+
+    // Boot Application
+    window.addEventListener('DOMContentLoaded', async () => {
+      updateThemeIcon();
+      await ensureSeededDatabase();
+      renderAuthScreen();
+
+      const params = new URLSearchParams(window.location.search);
+      const invitedBy = (params.get('invite') || '').trim().toLowerCase().replace(/^@/, '');
+
+      const savedSessionUser = sessionStorage.getItem('deskspace_session_user');
+      const db = loadDB();
+      if (savedSessionUser && db.users[savedSessionUser]) {
+        completeLogin(savedSessionUser);
+        if (invitedBy && invitedBy !== savedSessionUser) {
+          openDirectoryModal('directory');
+          const searchInput = document.getElementById('dir-search-input');
+          if (searchInput) {
+            searchInput.value = invitedBy;
+            renderDirectoryContent();
+          }
+        }
+      } else if (invitedBy) {
+        switchAuthTab('register');
+        showToast(`Invited by @${invitedBy} — create your account to connect!`);
+      }
+    });
+  </script>
+</body>
+</html>
